@@ -3,3 +3,7 @@ dist/
 release/
 .env
 *.exe
+docs/
+release/
+*.db
+

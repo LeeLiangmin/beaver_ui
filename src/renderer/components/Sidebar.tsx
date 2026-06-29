@@ -1,4 +1,5 @@
-import { Search, Zap, Cpu, Calendar, Clock, SlidersHorizontal, Home } from 'lucide-react'
+import { memo } from 'react'
+import { Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal, Home } from 'lucide-react'
 
 type TabId = string
 
@@ -15,17 +16,17 @@ interface SidebarProps {
 }
 
 const iconMap: Record<string, React.ComponentType<any>> = {
-  Search, Zap, Cpu, Calendar, Clock, SlidersHorizontal,
+  Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal,
 }
 
-export default function Sidebar({ tabs, activeTab, onSelectTab }: SidebarProps) {
+export default memo(function Sidebar({ tabs, activeTab, onSelectTab }: SidebarProps) {
   return (
-    <nav className="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-1 shrink-0">
+    <nav className="w-16 bg-sidebar-bg border-r border-gray-200 flex flex-col items-center py-4 gap-1 shrink-0">
       <button
         onClick={() => onSelectTab('welcome')}
-        className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+        className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
           activeTab === 'welcome'
-            ? 'bg-blue-100 text-blue-600'
+            ? 'bg-primary-light text-primary shadow-sm'
             : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
         }`}
         title="首页"
@@ -40,15 +41,16 @@ export default function Sidebar({ tabs, activeTab, onSelectTab }: SidebarProps) 
           <button
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors relative group ${
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all relative group ${
               isActive
-                ? 'bg-blue-100 text-blue-600'
+                ? 'bg-primary-light text-primary shadow-sm'
                 : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
             }`}
             title={tab.label}
           >
             {Icon && <Icon size={20} />}
-            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
+            {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r" />}
+            <span className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity shadow-md">
               {tab.label}
             </span>
           </button>
@@ -56,4 +58,4 @@ export default function Sidebar({ tabs, activeTab, onSelectTab }: SidebarProps) 
       })}
     </nav>
   )
-}
+})

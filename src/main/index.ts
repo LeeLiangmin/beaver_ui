@@ -1,6 +1,17 @@
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { registerIpcHandlers } from './ipc'
+import { closeDb } from './services/db'
+
+const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev')
+
+const iconPath = isDev
+  ? path.join(__dirname, '../../../resources/png/icon_256x256.png')
+  : path.join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'png', 'icon_256x256.png')
+
+if (isDev) {
+  try { require('electron-reloader')(module, { watchRenderer: false }) } catch {}
+}
 
 let mainWindow: BrowserWindow | null = null
 
@@ -11,6 +22,8 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#f5f5f5',
+    title: 'Beaver',
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -20,10 +33,10 @@ function createWindow() {
 
   mainWindow.setMenuBarVisibility(false)
 
-  if (process.env.NODE_ENV === 'development' || process.argv.includes('--dev')) {
+  if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'))
   }
 }
 
@@ -33,6 +46,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  closeDb()
   if (process.platform !== 'darwin') {
     app.quit()
   }

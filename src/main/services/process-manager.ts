@@ -1,85 +1,294 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import { BrowserWindow } from 'electron'
 
 const execAsync = promisify(exec)
+const MAX_BUFFER = 10 * 1024 * 1024
+let activeStreamVersion = 0
 
 export interface ProcessInfo {
   pid: number
   name: string
-  memoryKB: number
-  cpu: string
+  exePath: string
+  cpuPercent: number
+  memoryMB: number
+  memoryPercent: number
+  status: string
+  ports: number[]
 }
 
 export interface AutoStartEntry {
+  type: string
   name: string
   path: string
-  source: string
 }
 
-export async function getProcesses(): Promise<ProcessInfo[]> {
+interface RawPsProcess {
+  ProcessId: number
+  Name: string
+  ExecutablePath: string | null
+  WorkingSetSize: number
+}
+
+function parseCsvLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      inQuotes = !inQuotes
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current)
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  result.push(current)
+  return result.map((v) => v.trim())
+}
+
+function parseTasklist(stdout: string): ProcessInfo[] {
+  const processes: ProcessInfo[] = []
+  for (const line of stdout.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    const parts = parseCsvLine(trimmed)
+    const pid = parseInt(parts[1] || '0', 10)
+    if (pid <= 0) continue
+
+
+    const memKB = parseFloat((parts[4] || '0').replace(/[^0-9.]/g, ''))
+    processes.push({
+      pid,
+      name: parts[0] || '',
+      exePath: '',
+      cpuPercent: 0,
+      memoryMB: Math.round(((memKB || 0) / 1024) * 10) / 10,
+      memoryPercent: 0,
+      status: 'Running',
+      ports: [],
+    })
+  }
+  return processes
+}
+
+function parsePowerShellProcesses(stdout: string): RawPsProcess[] {
+  const txt = stdout.trim()
+  if (!txt) return []
   try {
-    const { stdout } = await execAsync('tasklist /FO CSV /NH', { timeout: 10000 })
-    const lines = stdout.trim().split('\n')
-    return lines
-      .map((line) => {
-        const parts = line.replace(/"/g, '').split(',')
-        const name = parts[0]?.trim() || ''
-        const pid = parseInt(parts[1]?.trim() || '0', 10)
-        const memStr = (parts[4]?.trim() || '0').replace(/[^0-9]/g, '')
-        const memKB = parseInt(memStr || '0', 10)
-        return { pid, name, memoryKB: memKB, cpu: '' }
-      })
-      .filter((p) => p.pid > 0)
+    const parsed = JSON.parse(txt)
+    return Array.isArray(parsed) ? parsed : [parsed]
   } catch {
     return []
   }
+}
+
+function parseNetstat(stdout: string): Map<number, number[]> {
+  const portMap = new Map<number, number[]>()
+  for (const line of stdout.split('\n')) {
+    const p = line.trim().split(/\s+/)
+    if (p.length >= 5 && p[0] === 'TCP') {
+      const portMatch = p[1].match(/:(\d+)$/)
+      const pid = parseInt(p[4], 10)
+      if (portMatch && !isNaN(pid) && pid > 0) {
+        if (!portMap.has(pid)) portMap.set(pid, [])
+        portMap.get(pid)!.push(parseInt(portMatch[1], 10))
+      }
+    }
+  }
+  return portMap
+}
+
+async function collectProcesses(): Promise<ProcessInfo[]> {
+  const [tasklistResult, psResult, netstatResult] = await Promise.allSettled([
+    execAsync('tasklist /FO CSV /NH', { timeout: 5000, maxBuffer: MAX_BUFFER }),
+    execAsync(
+      'powershell -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Select-Object ProcessId, Name, ExecutablePath, WorkingSetSize | ConvertTo-Json -Compress"',
+      { timeout: 4000, maxBuffer: MAX_BUFFER }
+    ),
+    execAsync('netstat -ano', { timeout: 4000, maxBuffer: MAX_BUFFER }),
+  ])
+
+  if (tasklistResult.status === 'rejected') {
+    console.warn('[process-manager] tasklist failed:', tasklistResult.reason)
+  }
+  if (psResult.status === 'rejected') {
+    console.warn('[process-manager] powershell failed:', psResult.reason)
+  }
+  if (netstatResult.status === 'rejected') {
+    console.warn('[process-manager] netstat failed:', netstatResult.reason)
+  }
+
+  const processes = tasklistResult.status === 'fulfilled'
+    ? parseTasklist(tasklistResult.value.stdout)
+    : []
+
+  const rawProcs = psResult.status === 'fulfilled'
+    ? parsePowerShellProcesses(psResult.value.stdout)
+    : []
+  const psMap = new Map<number, RawPsProcess>()
+  for (const p of rawProcs) {
+    if (p.ProcessId > 0) psMap.set(p.ProcessId, p)
+  }
+
+  const portMap = netstatResult.status === 'fulfilled'
+    ? parseNetstat(netstatResult.value.stdout)
+    : new Map<number, number[]>()
+
+  if (processes.length > 0) {
+    for (const p of processes) {
+      const ps = psMap.get(p.pid)
+      if (ps) {
+        p.exePath = ps.ExecutablePath || ''
+        if (ps.WorkingSetSize > 0) {
+          p.memoryMB = Math.round((ps.WorkingSetSize / 1024 / 1024) * 10) / 10
+        }
+      }
+      p.ports = portMap.get(p.pid) || []
+    }
+    return processes
+  }
+
+  // Fallback: if tasklist is unavailable but PowerShell succeeded, still return data.
+  for (const ps of rawProcs) {
+    if (!ps.ProcessId || ps.ProcessId <= 0) continue
+    processes.push({
+      pid: ps.ProcessId,
+      name: ps.Name || '',
+      exePath: ps.ExecutablePath || '',
+      cpuPercent: 0,
+      memoryMB: Math.round((ps.WorkingSetSize / 1024 / 1024) * 10) / 10,
+      memoryPercent: 0,
+      status: 'Running',
+      ports: portMap.get(ps.ProcessId) || [],
+    })
+  }
+
+  return processes
+}
+
+export async function getProcesses(): Promise<ProcessInfo[]> {
+  return collectProcesses()
+}
+
+function isWindowAvailable(window: BrowserWindow): boolean {
+  return !window.isDestroyed() && !window.webContents.isDestroyed()
+}
+
+function isStreamActive(version: number): boolean {
+  return version === activeStreamVersion
+}
+
+function sendStreamEvent(
+  window: BrowserWindow,
+  channel: string,
+  ...args: unknown[]
+): boolean {
+  if (!isWindowAvailable(window)) return false
+  try {
+    window.webContents.send(channel, ...args)
+    return true
+  } catch (e) {
+    console.error(`[process-manager] send ${channel} failed:`, e)
+    return false
+  }
+}
+
+export function createProcessStreamVersion(): number {
+  activeStreamVersion += 1
+  return activeStreamVersion
+}
+
+export function cancelProcessStreaming(): void {
+  activeStreamVersion += 1
+}
+
+export function getProcessesStreaming(
+  window: BrowserWindow,
+  version: number,
+  batchSize = 50,
+): void {
+  ;(async () => {
+    console.log(`[process-manager] stream #${version} started`)
+    try {
+      const processes = await collectProcesses()
+
+      if (!isStreamActive(version)) {
+        console.log(`[process-manager] stream #${version} cancelled before emit`)
+        return
+      }
+
+      console.log(`[process-manager] stream #${version} collected ${processes.length} processes`)
+
+      for (let i = 0; i < processes.length; i += batchSize) {
+        if (!isStreamActive(version)) {
+          console.log(`[process-manager] stream #${version} cancelled while sending`)
+          return
+        }
+        const sent = sendStreamEvent(
+          window,
+          'process:batch',
+          version,
+          processes.slice(i, i + batchSize),
+        )
+        if (!sent) return
+      }
+
+      sendStreamEvent(window, 'process:complete', version)
+    } catch (e) {
+      if (!isStreamActive(version)) return
+
+      const message = e instanceof Error ? e.message : String(e)
+      console.error(`[process-manager] stream #${version} failed:`, e)
+      sendStreamEvent(window, 'process:error', version, message)
+      sendStreamEvent(window, 'process:complete', version)
+    }
+  })()
 }
 
 export async function killProcess(pid: number): Promise<void> {
   await execAsync(`taskkill /PID ${pid} /F`, { timeout: 5000 })
 }
 
-export async function getAutoStartEntries(): Promise<AutoStartEntry[]> {
-  const entries: AutoStartEntry[] = []
+export async function restartProcess(pid: number, exePath: string): Promise<void> {
   try {
-    const { stdout } = await execAsync(
-      'reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"',
-      { timeout: 5000 }
-    )
-    for (const line of stdout.split('\n')) {
-      const match = line.trim().match(/^\s*(.+?)\s+REG_\w+\s+(.+)$/)
-      if (match) {
-        entries.push({ name: match[1], path: match[2], source: 'HKCU' })
-      }
-    }
+    await execAsync(`taskkill /PID ${pid} /F`, { timeout: 5000 })
   } catch {}
+  exec(`"${exePath}"`, (err) => { if (err) console.error('restart failed:', err) })
+}
+
+export async function getAutoStartEntries(exePath: string): Promise<AutoStartEntry[]> {
+  const entries: AutoStartEntry[] = []
+  const lower = exePath.toLowerCase()
+
+  for (const hive of ['HKCU', 'HKLM'] as const) {
+    const keyPath = hive === 'HKCU'
+      ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+      : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+    try {
+      const { stdout } = await execAsync(`reg query "${keyPath}"`, { timeout: 5000 })
+      for (const line of stdout.split('\n')) {
+        const match = line.trim().match(/^\s*(.+?)\s+REG_\w+\s+(.+)$/)
+        if (match && match[2].toLowerCase().includes(lower)) {
+          entries.push({
+            type: hive === 'HKCU' ? 'registry_run_hkcu' : 'registry_run_hklm',
+            name: match[1],
+            path: match[2],
+          })
+        }
+      }
+    } catch {}
+  }
   return entries
 }
 
-export async function removeAutoStart(name: string, source: string): Promise<void> {
-  const key = source === 'HKCU'
+export async function disableAutoStart(entryType: string, entryName: string): Promise<void> {
+  const key = entryType === 'registry_run_hkcu'
     ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
     : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-  await execAsync(`reg delete "${key}" /v "${name}" /f`, { timeout: 5000 })
-}
-
-export async function getProcessPorts(): Promise<{ pid: number; port: number }[]> {
-  try {
-    const { stdout } = await execAsync('netstat -ano', { timeout: 10000 })
-    const results: { pid: number; port: number }[] = []
-    for (const line of stdout.split('\n')) {
-      const parts = line.trim().split(/\s+/)
-      if (parts.length >= 5 && parts[0] === 'TCP') {
-        const localAddr = parts[1]
-        const pid = parseInt(parts[4], 10)
-        const portMatch = localAddr.match(/:(\d+)$/)
-        if (portMatch && !isNaN(pid)) {
-          results.push({ pid, port: parseInt(portMatch[1], 10) })
-        }
-      }
-    }
-    return results
-  } catch {
-    return []
-  }
+  await execAsync(`reg delete "${key}" /v "${entryName}" /f`, { timeout: 5000 })
 }

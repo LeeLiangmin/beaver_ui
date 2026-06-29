@@ -7,11 +7,11 @@ export interface Settings {
 }
 
 const defaultSettings: Settings = {
-  dataPath: app.getPath('userData'),
+  dataPath: app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath(),
 }
 
 function getSettingsPath(): string {
-  return path.join(app.getPath('userData'), 'settings.json')
+  return path.join(defaultSettings.dataPath, 'settings.json')
 }
 
 export function loadSettings(): Settings {

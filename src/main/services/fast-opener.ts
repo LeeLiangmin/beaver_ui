@@ -1,83 +1,88 @@
 import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import crypto from 'crypto'
 
-export interface OpenerGroup {
-  id: string
-  name: string
-}
-
-export interface OpenerItem {
+export interface FastOpenerItem {
   id: string
   name: string
   path: string
+  isDir: boolean
   groupId: string
+  createdAt: number
+  lastUsed: number
   useCount: number
+  sortOrder: number
 }
 
-interface StoreData {
-  groups: OpenerGroup[]
-  items: OpenerItem[]
+export interface FastOpenerGroup {
+  id: string
+  name: string
+  color: string
+  sortOrder: number
+  createdAt: number
 }
 
-const defaultData: StoreData = {
-  groups: [{ id: 'default', name: '默认' }],
-  items: [],
+export interface FastOpenerData {
+  groups: FastOpenerGroup[]
+  items: FastOpenerItem[]
 }
+
+const defaultGroups: FastOpenerGroup[] = []
+let sortCounter = 0
 
 function getStorePath(): string {
-  return path.join(app.getPath('userData'), 'opener.json')
+  const base = app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath()
+  return path.join(base, 'fast_opener.json')
 }
 
-function loadStore(): StoreData {
+function loadStore(): FastOpenerData {
   try {
     const p = getStorePath()
     if (fs.existsSync(p)) {
-      return JSON.parse(fs.readFileSync(p, 'utf-8'))
+      const d = JSON.parse(fs.readFileSync(p, 'utf-8'))
+      if (d.items && d.items.length > 0) sortCounter = Math.max(...d.items.map((i: any) => i.sortOrder || 0))
+      return d
     }
   } catch {}
-  return defaultData
+  return { groups: [...defaultGroups], items: [] }
 }
 
-function saveStore(data: StoreData): void {
+function saveStore(data: FastOpenerData): void {
   const p = getStorePath()
   const dir = path.dirname(p)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf-8')
 }
 
-let idCounter = Date.now()
-
-function nextId(): string {
-  return String(++idCounter)
+function uuid(): string {
+  return crypto.randomUUID()
 }
 
-export function getGroups(): OpenerGroup[] {
-  return loadStore().groups
+function now(): number {
+  return Math.floor(Date.now() / 1000)
 }
 
-export function addGroup(name: string): OpenerGroup {
+export function getAll(): FastOpenerData {
+  return loadStore()
+}
+
+export function addItem(filePath: string, groupId: string): FastOpenerItem {
   const store = loadStore()
-  const group: OpenerGroup = { id: nextId(), name }
-  store.groups.push(group)
-  saveStore(store)
-  return group
-}
-
-export function removeGroup(id: string): void {
-  const store = loadStore()
-  store.groups = store.groups.filter(g => g.id !== id)
-  store.items = store.items.filter(i => i.groupId !== id)
-  saveStore(store)
-}
-
-export function getItems(): OpenerItem[] {
-  return loadStore().items
-}
-
-export function addItem(name: string, itemPath: string, groupId: string): OpenerItem {
-  const store = loadStore()
-  const item: OpenerItem = { id: nextId(), name, path: itemPath, groupId, useCount: 0 }
+  const isDir = fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()
+  const name = path.basename(filePath)
+  sortCounter++
+  const item: FastOpenerItem = {
+    id: uuid(),
+    name,
+    path: filePath,
+    isDir,
+    groupId,
+    createdAt: now(),
+    lastUsed: 0,
+    useCount: 0,
+    sortOrder: sortCounter,
+  }
   store.items.push(item)
   saveStore(store)
   return item
@@ -89,11 +94,69 @@ export function removeItem(id: string): void {
   saveStore(store)
 }
 
-export function incrementUseCount(id: string): void {
+export function openItem(id: string): void {
   const store = loadStore()
   const item = store.items.find(i => i.id === id)
   if (item) {
     item.useCount++
+    item.lastUsed = now()
     saveStore(store)
+  }
+}
+
+export function moveItem(itemId: string, groupId: string): void {
+  const store = loadStore()
+  const item = store.items.find(i => i.id === itemId)
+  if (item) {
+    item.groupId = groupId
+    saveStore(store)
+  }
+}
+
+export function updateSort(ids: string[]): void {
+  const store = loadStore()
+  for (let idx = 0; idx < ids.length; idx++) {
+    const item = store.items.find(i => i.id === ids[idx])
+    if (item) item.sortOrder = idx
+  }
+  saveStore(store)
+}
+
+export function addGroup(name: string, color: string): FastOpenerGroup {
+  const store = loadStore()
+  const maxOrder = store.groups.reduce((max, g) => Math.max(max, g.sortOrder), 0)
+  const group: FastOpenerGroup = {
+    id: uuid(),
+    name,
+    color,
+    sortOrder: maxOrder + 1,
+    createdAt: now(),
+  }
+  store.groups.push(group)
+  saveStore(store)
+  return group
+}
+
+export function updateGroup(group: FastOpenerGroup): void {
+  const store = loadStore()
+  const idx = store.groups.findIndex(g => g.id === group.id)
+  if (idx >= 0) {
+    store.groups[idx] = group
+    saveStore(store)
+  }
+}
+
+export function removeGroup(id: string): void {
+  const store = loadStore()
+  store.groups = store.groups.filter(g => g.id !== id)
+  store.items = store.items.filter(i => i.groupId !== id)
+  saveStore(store)
+}
+
+export function validatePath(filePath: string): boolean {
+  try {
+    return fs.existsSync(filePath)
+  } catch {
+    return false
   }
 }

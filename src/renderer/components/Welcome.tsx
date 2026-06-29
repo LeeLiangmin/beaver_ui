@@ -1,4 +1,5 @@
-import { Search, Zap, Cpu, Calendar, Clock, SlidersHorizontal } from 'lucide-react'
+import { memo } from 'react'
+import { Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal } from 'lucide-react'
 
 interface WelcomeProps {
   tabs: { id: string; label: string; icon: string; description?: string }[]
@@ -15,14 +16,14 @@ const descriptions: Record<string, string> = {
 }
 
 const iconMap: Record<string, React.ComponentType<any>> = {
-  Search, Zap, Cpu, Calendar, Clock, SlidersHorizontal,
+  Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal,
 }
 
-export default function Welcome({ tabs, onSelectTab }: WelcomeProps) {
+export default memo(function Welcome({ tabs, onSelectTab }: WelcomeProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-full py-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">GoUI</h1>
-      <p className="text-gray-500 mb-8">日常工作助手</p>
+      <h1 className="text-3xl font-bold text-gray-800 mb-2">Beaver</h1>
+      <p className="text-gray-500 mb-8">Daily Work Assistant</p>
       <div className="grid grid-cols-3 gap-4 max-w-2xl">
         {tabs.map((tab) => {
           const Icon = iconMap[tab.icon]
@@ -30,9 +31,9 @@ export default function Welcome({ tabs, onSelectTab }: WelcomeProps) {
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all text-center group"
+              className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl border border-gray-200 hover:border-primary/40 hover:shadow-card transition-all text-center group"
             >
-              <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+              <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-primary-light text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                 {Icon && <Icon size={24} />}
               </div>
               <span className="font-medium text-gray-700 text-sm">{tab.label}</span>
@@ -43,4 +44,4 @@ export default function Welcome({ tabs, onSelectTab }: WelcomeProps) {
       </div>
     </div>
   )
-}
+})

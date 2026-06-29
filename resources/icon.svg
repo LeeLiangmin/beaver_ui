@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#E0F7FA"/>
+  <circle cx="80"  cy="80"  r="90" fill="#B2EBF2" opacity="0.5"/>
+  <circle cx="430" cy="420" r="110" fill="#B2EBF2" opacity="0.4"/>
+  <circle cx="400" cy="60"  r="60"  fill="#FFFFFF" opacity="0.35"/>
+
+  <ellipse cx="256" cy="452" rx="112" ry="36" fill="#80CBC4"/>
+  <line x1="178" y1="452" x2="334" y2="452" stroke="#4DB6AC" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <line x1="188" y1="438" x2="324" y2="438" stroke="#4DB6AC" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="188" y1="466" x2="324" y2="466" stroke="#4DB6AC" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+
+  <ellipse cx="256" cy="312" rx="110" ry="118" fill="#80CBC4"/>
+  <ellipse cx="256" cy="332" rx="62" ry="74" fill="#E0F7FA"/>
+
+  <ellipse cx="182" cy="392" rx="24" ry="14" fill="#4DB6AC"/>
+  <ellipse cx="330" cy="392" rx="24" ry="14" fill="#4DB6AC"/>
+  <line x1="169" y1="402" x2="165" y2="410" stroke="#26A69A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="180" y1="405" x2="178" y2="413" stroke="#26A69A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="192" y1="404" x2="192" y2="412" stroke="#26A69A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="318" y1="402" x2="318" y2="410" stroke="#26A69A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="330" y1="405" x2="330" y2="413" stroke="#26A69A" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="342" y1="402" x2="345" y2="410" stroke="#26A69A" stroke-width="2.5" stroke-linecap="round"/>
+
+  <rect x="218" y="197" width="76" height="46" rx="20" fill="#80CBC4"/>
+  <circle cx="256" cy="182" r="93" fill="#80CBC4"/>
+
+  <ellipse cx="184" cy="116" rx="26" ry="30" fill="#4DB6AC"/>
+  <ellipse cx="184" cy="116" rx="15" ry="19" fill="#F8BBD0"/>
+  <ellipse cx="328" cy="116" rx="26" ry="30" fill="#4DB6AC"/>
+  <ellipse cx="328" cy="116" rx="15" ry="19" fill="#F8BBD0"/>
+
+  <circle cx="220" cy="170" r="19" fill="#FFFFFF"/>
+  <circle cx="292" cy="170" r="19" fill="#FFFFFF"/>
+  <circle cx="220" cy="170" r="13" fill="#263238"/>
+  <circle cx="292" cy="170" r="13" fill="#263238"/>
+  <circle cx="224" cy="165" r="5" fill="#FFFFFF" opacity="0.85"/>
+  <circle cx="296" cy="165" r="5" fill="#FFFFFF" opacity="0.85"/>
+
+  <ellipse cx="256" cy="198" rx="12" ry="9" fill="#263238"/>
+  <ellipse cx="256" cy="196" rx="7" ry="5" fill="#37474F"/>
+
+  <ellipse cx="208" cy="197" rx="20" ry="13" fill="#F48FB1" opacity="0.4"/>
+  <ellipse cx="304" cy="197" rx="20" ry="13" fill="#F48FB1" opacity="0.4"/>
+
+  <rect x="240" y="204" width="15" height="23" rx="4" fill="#FFFFFF"/>
+  <rect x="258" y="204" width="15" height="23" rx="4" fill="#FFFFFF"/>
+  <rect x="242" y="206" width="4" height="10" rx="2" fill="#E0F7FA" opacity="0.6"/>
+  <rect x="260" y="206" width="4" height="10" rx="2" fill="#E0F7FA" opacity="0.6"/>
+
+  <rect x="224" y="282" width="64" height="34" rx="12" fill="#26A69A" opacity="0.9"/>
+  <line x1="233" y1="292" x2="279" y2="292" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+  <line x1="233" y1="299" x2="272" y2="299" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="233" y1="306" x2="268" y2="306" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <polyline points="233,292 236,295 242,288" fill="none" stroke="#A7FFEB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="340" cy="150" r="5" fill="#F48FB1" opacity="0.7"/>
+  <circle cx="355" cy="168" r="3" fill="#FFE082" opacity="0.8"/>
+  <circle cx="162" cy="158" r="4" fill="#B39DDB" opacity="0.6"/>
+  <circle cx="148" cy="172" r="3" fill="#FFE082" opacity="0.7"/>
+</svg>

@@ -10,6 +10,16 @@ export default defineConfig({
   build: {
     outDir: '../../dist/renderer',
     emptyOutDir: true,
+    target: 'es2020',
+    cssMinify: 'lightningcss',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react/jsx-runtime'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
   },
   resolve: {
     alias: {
