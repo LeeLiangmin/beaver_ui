@@ -4,10 +4,27 @@ Daily Work Assistant — Electron desktop app.
 
 ## Dev
 
+### Prerequisites
+
+`better-sqlite3` is a native module — it needs to compile on install. Make sure your platform has the required build tools:
+
+| Platform | Requirements |
+|----------|-------------|
+| **Windows** | `windows-build-tools` (`npm i -g windows-build-tools`) or Visual Studio Build Tools |
+| **macOS** | Xcode Command Line Tools (`xcode-select --install`) |
+| **Linux** | `build-essential` + `python3` (`apt install build-essential python3`) |
+
+Node.js **20.x – 26.x** recommended.
+
 ```bash
 npm install
 npm run dev
 ```
+
+> **Troubleshooting:** If `npm install` fails on non-Windows platforms with `node-gyp` / `glob` / `tar` errors, ensure `node-gyp` is available:
+> ```bash
+> npm install -g node-gyp
+> ```
 
 ## Package
 
