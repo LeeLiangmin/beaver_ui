@@ -6,4 +6,5 @@ release/
 docs/
 release/
 *.db
+resources/electron-*.zip
 
