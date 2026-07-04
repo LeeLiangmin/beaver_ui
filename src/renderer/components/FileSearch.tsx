@@ -79,14 +79,15 @@ export default function FileSearch() {
     if (res.ok && res.data) setSearchPath(res.data)
   }
 
-  const skeletonCount = 12
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-col gap-2 mb-3">
         <div className="flex gap-2 items-center">
           <div className="relative flex-1 min-w-0">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search
+              size={14}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
             <input
               type="text"
               value={keyword}
@@ -97,14 +98,21 @@ export default function FileSearch() {
             />
           </div>
           <div className="relative flex-[1.4] min-w-0">
-            <Folder size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Folder
+              size={14}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
             <input
               type="text"
               value={searchPath}
               readOnly
               className="w-full border border-gray-300 rounded-lg pl-8 pr-8 py-2 text-sm truncate cursor-default focus:outline-none bg-gray-50"
             />
-            <button onClick={handleBrowse} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors" title="浏览目录">
+            <button
+              onClick={handleBrowse}
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100 text-gray-400 transition-colors"
+              title="浏览目录"
+            >
               <FolderOpen size={15} />
             </button>
           </div>
@@ -118,36 +126,57 @@ export default function FileSearch() {
             <option value="dir">目录</option>
           </select>
           <div className="flex gap-1">
-            <button onClick={handleSearch} disabled={searching}
-              className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm">
+            <button
+              onClick={handleSearch}
+              disabled={searching}
+              className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+            >
               <Search size={15} />
               {searching ? '搜索中…' : '搜索'}
             </button>
-            <button onClick={handleCancel} disabled={!searching}
-              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition-colors">
-              <X size={15} />停止
+            <button
+              onClick={handleCancel}
+              disabled={!searching}
+              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            >
+              <X size={15} />
+              停止
             </button>
-            <button onClick={handleClear}
-              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-              <Trash2 size={15} />清空
+            <button
+              onClick={handleClear}
+              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <Trash2 size={15} />
+              清空
             </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-400 mr-1">快速选择：</span>
           {drives.map((d) => (
-            <button key={d} onClick={() => setSearchPath(d)}
+            <button
+              key={d}
+              onClick={() => setSearchPath(d)}
               className={`px-3 py-0.5 text-xs font-mono rounded-full border transition-colors ${
                 searchPath === d
                   ? 'bg-primary-light text-primary border-primary/30'
                   : 'text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
-              }`}>
+              }`}
+            >
               {d}
             </button>
           ))}
           <span className="ml-auto text-xs text-gray-400">
-            {results.length > 0 && <><span className="text-primary font-mono">{results.length}</span> 个结果</>}
-            {searching && <span className="ml-2"><ProgressBar /></span>}
+            {results.length > 0 && (
+              <>
+                <span className="text-primary font-mono">{results.length}</span> 个结果
+              </>
+            )}
+            {searching && (
+              <span className="ml-2">
+                <ProgressBar />
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -175,19 +204,42 @@ export default function FileSearch() {
             renderRow={(f) => (
               <div className="flex items-center h-9 border-b border-gray-100 hover:bg-primary-light/30 group text-sm transition-colors">
                 <div className="w-7 shrink-0 flex justify-center">
-                  {f.isDir ? <Folder size={13} className="text-amber-500" /> : <File size={13} className="text-primary" />}
+                  {f.isDir ? (
+                    <Folder size={13} className="text-amber-500" />
+                  ) : (
+                    <File size={13} className="text-primary" />
+                  )}
                 </div>
-                <div className="flex-1 min-w-0 px-3 font-medium text-gray-700 truncate" title={f.name}>{f.name}</div>
-                <div className="w-72 shrink-0 px-3 text-xs text-gray-400 truncate" title={f.path}>{f.path}</div>
-                <div className="w-20 shrink-0 px-3 text-right text-xs font-mono text-gray-500">{f.isDir ? '—' : formatSize(f.size)}</div>
-                <div className="w-40 shrink-0 px-3 text-xs font-mono text-gray-500">{f.modTime > 0 ? formatTime(f.modTime) : '—'}</div>
+                <div
+                  className="flex-1 min-w-0 px-3 font-medium text-gray-700 truncate"
+                  title={f.name}
+                >
+                  {f.name}
+                </div>
+                <div className="w-72 shrink-0 px-3 text-xs text-gray-400 truncate" title={f.path}>
+                  {f.path}
+                </div>
+                <div className="w-20 shrink-0 px-3 text-right text-xs font-mono text-gray-500">
+                  {f.isDir ? '—' : formatSize(f.size)}
+                </div>
+                <div className="w-40 shrink-0 px-3 text-xs font-mono text-gray-500">
+                  {f.modTime > 0 ? formatTime(f.modTime) : '—'}
+                </div>
                 <div className="w-14 shrink-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   {!f.isDir && (
-                    <button onClick={() => handleOpen(f.path)} className="p-1 rounded text-primary hover:bg-primary-light transition-colors" title="打开文件">
+                    <button
+                      onClick={() => handleOpen(f.path)}
+                      className="p-1 rounded text-primary hover:bg-primary-light transition-colors"
+                      title="打开文件"
+                    >
                       <FolderOpen size={15} />
                     </button>
                   )}
-                  <button onClick={() => handleOpenLocation(f.path)} className="p-1 rounded text-emerald-500 hover:bg-emerald-50 transition-colors" title="打开所在位置">
+                  <button
+                    onClick={() => handleOpenLocation(f.path)}
+                    className="p-1 rounded text-emerald-500 hover:bg-emerald-50 transition-colors"
+                    title="打开所在位置"
+                  >
                     <Folder size={15} />
                   </button>
                 </div>

@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import path from 'path'
 import { registerIpcHandlers } from './ipc'
 import { closeDb } from './services/db'
@@ -10,7 +10,10 @@ const iconPath = isDev
   : path.join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'png', 'icon_256x256.png')
 
 if (isDev) {
-  try { require('electron-reloader')(module, { watchRenderer: false }) } catch {}
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('electron-reloader')(module, { watchRenderer: false })
+  } catch {}
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -41,6 +44,19 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.setProxy({ mode: 'system' })
+  if (!isDev) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://baike.baidu.com; img-src 'self' data:; font-src 'self' data:;",
+          ],
+        },
+      })
+    })
+  }
   registerIpcHandlers()
   createWindow()
 })

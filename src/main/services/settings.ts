@@ -1,10 +1,9 @@
 import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import type { Settings } from '../../shared/types'
 
-export interface Settings {
-  dataPath: string
-}
+export type { Settings }
 
 const defaultSettings: Settings = {
   dataPath: app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath(),

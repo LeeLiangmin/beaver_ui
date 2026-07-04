@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal } from 'lucide-react'
+import { Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal, HardDrive } from 'lucide-react'
 
 interface WelcomeProps {
   tabs: { id: string; label: string; icon: string; description?: string }[]
@@ -13,10 +13,17 @@ const descriptions: Record<string, string> = {
   calendar: '中国传统万年历，节气与农历信息',
   clock: '服务器时间显示与倒计时功能',
   env: '查看和编辑 Windows 环境变量',
+  cleaner: '磁盘清理 + 大文件查找，AI 智能建议',
 }
 
 const iconMap: Record<string, React.ComponentType<any>> = {
-  Search, Zap, Cpu, CalendarDays, Clock, SlidersHorizontal,
+  Search,
+  Zap,
+  Cpu,
+  CalendarDays,
+  Clock,
+  SlidersHorizontal,
+  HardDrive,
 }
 
 export default memo(function Welcome({ tabs, onSelectTab }: WelcomeProps) {

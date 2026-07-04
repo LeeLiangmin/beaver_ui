@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import Sidebar from './components/Sidebar'
 import ProgressBar from './components/ProgressBar'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const Welcome = lazy(() => import('./components/Welcome'))
 const FileSearch = lazy(() => import('./components/FileSearch'))
@@ -9,8 +10,10 @@ const ProcessManager = lazy(() => import('./components/ProcessManager'))
 const Calendar = lazy(() => import('./components/Calendar'))
 const ClockTimer = lazy(() => import('./components/ClockTimer'))
 const EnvManager = lazy(() => import('./components/EnvManager'))
+const DiskCleaner = lazy(() => import('./components/DiskCleaner'))
+const SettingsPage = lazy(() => import('./components/SettingsPage'))
 
-type TabId = 'welcome' | 'filesearch' | 'fastopener' | 'process' | 'calendar' | 'clock' | 'env'
+type TabId = 'welcome' | 'filesearch' | 'fastopener' | 'process' | 'calendar' | 'clock' | 'env' | 'cleaner' | 'settings'
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'filesearch', label: '文件搜索', icon: 'Search' },
@@ -19,10 +22,15 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'calendar', label: '万年历', icon: 'CalendarDays' },
   { id: 'clock', label: '时钟计时', icon: 'Clock' },
   { id: 'env', label: '环境变量', icon: 'SlidersHorizontal' },
+  { id: 'cleaner', label: '磁盘清理', icon: 'HardDrive' },
 ]
 
 function TabFallback() {
-  return <div className="flex items-center justify-center h-32"><ProgressBar /></div>
+  return (
+    <div className="flex items-center justify-center h-32">
+      <ProgressBar />
+    </div>
+  )
 }
 
 export default function App() {
@@ -31,8 +39,8 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && !e.altKey && !e.metaKey) {
-        const idx = parseInt(e.key)
-        if (idx >= 1 && idx <= 6) {
+        const idx = parseInt(e.key, 10)
+        if (idx >= 1 && idx <= 7) {
           e.preventDefault()
           setActiveTab(tabs[idx - 1].id)
         }
@@ -53,13 +61,17 @@ export default function App() {
       <Sidebar tabs={tabs} activeTab={activeTab} onSelectTab={selectTab} />
       <main className="flex-1 overflow-auto p-6 bg-surface-alt">
         <Suspense fallback={<TabFallback />}>
-          {activeTab === 'welcome' && <Welcome tabs={tabs} onSelectTab={selectTab} />}
-          {activeTab === 'filesearch' && <FileSearch />}
-          {activeTab === 'fastopener' && <FastOpener />}
-          {activeTab === 'process' && <ProcessManager />}
-          {activeTab === 'calendar' && <Calendar />}
-          {activeTab === 'clock' && <ClockTimer />}
-          {activeTab === 'env' && <EnvManager />}
+          <ErrorBoundary key={activeTab}>
+            {activeTab === 'welcome' && <Welcome tabs={tabs} onSelectTab={selectTab} />}
+            {activeTab === 'filesearch' && <FileSearch />}
+            {activeTab === 'fastopener' && <FastOpener />}
+            {activeTab === 'process' && <ProcessManager />}
+            {activeTab === 'calendar' && <Calendar />}
+            {activeTab === 'clock' && <ClockTimer />}
+            {activeTab === 'env' && <EnvManager />}
+            {activeTab === 'cleaner' && <DiskCleaner />}
+            {activeTab === 'settings' && <SettingsPage />}
+          </ErrorBoundary>
         </Suspense>
       </main>
     </div>

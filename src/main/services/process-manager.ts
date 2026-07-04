@@ -1,27 +1,11 @@
-import { exec } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { BrowserWindow } from 'electron'
+import type { ProcessInfo, AutoStartEntry } from '../../shared/types'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 const MAX_BUFFER = 10 * 1024 * 1024
 let activeStreamVersion = 0
-
-export interface ProcessInfo {
-  pid: number
-  name: string
-  exePath: string
-  cpuPercent: number
-  memoryMB: number
-  memoryPercent: number
-  status: string
-  ports: number[]
-}
-
-export interface AutoStartEntry {
-  type: string
-  name: string
-  path: string
-}
 
 interface RawPsProcess {
   ProcessId: number
@@ -30,7 +14,7 @@ interface RawPsProcess {
   WorkingSetSize: number
 }
 
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const result: string[] = []
   let current = ''
   let inQuotes = false
@@ -59,7 +43,6 @@ function parseTasklist(stdout: string): ProcessInfo[] {
     const parts = parseCsvLine(trimmed)
     const pid = parseInt(parts[1] || '0', 10)
     if (pid <= 0) continue
-
 
     const memKB = parseFloat((parts[4] || '0').replace(/[^0-9.]/g, ''))
     processes.push({
@@ -105,12 +88,18 @@ function parseNetstat(stdout: string): Map<number, number[]> {
 
 async function collectProcesses(): Promise<ProcessInfo[]> {
   const [tasklistResult, psResult, netstatResult] = await Promise.allSettled([
-    execAsync('tasklist /FO CSV /NH', { timeout: 5000, maxBuffer: MAX_BUFFER }),
-    execAsync(
-      'powershell -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Select-Object ProcessId, Name, ExecutablePath, WorkingSetSize | ConvertTo-Json -Compress"',
-      { timeout: 4000, maxBuffer: MAX_BUFFER }
+    execFileAsync('tasklist', ['/FO', 'CSV', '/NH'], { timeout: 5000, maxBuffer: MAX_BUFFER }),
+    execFileAsync(
+      'powershell',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        'Get-CimInstance Win32_Process | Select-Object ProcessId, Name, ExecutablePath, WorkingSetSize | ConvertTo-Json -Compress',
+      ],
+      { timeout: 4000, maxBuffer: MAX_BUFFER },
     ),
-    execAsync('netstat -ano', { timeout: 4000, maxBuffer: MAX_BUFFER }),
+    execFileAsync('netstat', ['-ano'], { timeout: 4000, maxBuffer: MAX_BUFFER }),
   ])
 
   if (tasklistResult.status === 'rejected') {
@@ -123,21 +112,20 @@ async function collectProcesses(): Promise<ProcessInfo[]> {
     console.warn('[process-manager] netstat failed:', netstatResult.reason)
   }
 
-  const processes = tasklistResult.status === 'fulfilled'
-    ? parseTasklist(tasklistResult.value.stdout)
-    : []
+  const processes =
+    tasklistResult.status === 'fulfilled' ? parseTasklist(tasklistResult.value.stdout) : []
 
-  const rawProcs = psResult.status === 'fulfilled'
-    ? parsePowerShellProcesses(psResult.value.stdout)
-    : []
+  const rawProcs =
+    psResult.status === 'fulfilled' ? parsePowerShellProcesses(psResult.value.stdout) : []
   const psMap = new Map<number, RawPsProcess>()
   for (const p of rawProcs) {
     if (p.ProcessId > 0) psMap.set(p.ProcessId, p)
   }
 
-  const portMap = netstatResult.status === 'fulfilled'
-    ? parseNetstat(netstatResult.value.stdout)
-    : new Map<number, number[]>()
+  const portMap =
+    netstatResult.status === 'fulfilled'
+      ? parseNetstat(netstatResult.value.stdout)
+      : new Map<number, number[]>()
 
   if (processes.length > 0) {
     for (const p of processes) {
@@ -183,11 +171,7 @@ function isStreamActive(version: number): boolean {
   return version === activeStreamVersion
 }
 
-function sendStreamEvent(
-  window: BrowserWindow,
-  channel: string,
-  ...args: unknown[]
-): boolean {
+function sendStreamEvent(window: BrowserWindow, channel: string, ...args: unknown[]): boolean {
   if (!isWindowAvailable(window)) return false
   try {
     window.webContents.send(channel, ...args)
@@ -251,14 +235,14 @@ export function getProcessesStreaming(
 }
 
 export async function killProcess(pid: number): Promise<void> {
-  await execAsync(`taskkill /PID ${pid} /F`, { timeout: 5000 })
+  await execFileAsync('taskkill', ['/PID', String(pid), '/F'], { timeout: 5000 })
 }
 
 export async function restartProcess(pid: number, exePath: string): Promise<void> {
   try {
-    await execAsync(`taskkill /PID ${pid} /F`, { timeout: 5000 })
+    await execFileAsync('taskkill', ['/PID', String(pid), '/F'], { timeout: 5000 })
   } catch {}
-  exec(`"${exePath}"`, (err) => { if (err) console.error('restart failed:', err) })
+  spawn(exePath, [], { detached: true, stdio: 'ignore', shell: false }).unref()
 }
 
 export async function getAutoStartEntries(exePath: string): Promise<AutoStartEntry[]> {
@@ -266,11 +250,12 @@ export async function getAutoStartEntries(exePath: string): Promise<AutoStartEnt
   const lower = exePath.toLowerCase()
 
   for (const hive of ['HKCU', 'HKLM'] as const) {
-    const keyPath = hive === 'HKCU'
-      ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-      : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+    const keyPath =
+      hive === 'HKCU'
+        ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+        : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
     try {
-      const { stdout } = await execAsync(`reg query "${keyPath}"`, { timeout: 5000 })
+      const { stdout } = await execFileAsync('reg', ['query', keyPath], { timeout: 5000 })
       for (const line of stdout.split('\n')) {
         const match = line.trim().match(/^\s*(.+?)\s+REG_\w+\s+(.+)$/)
         if (match && match[2].toLowerCase().includes(lower)) {
@@ -287,8 +272,9 @@ export async function getAutoStartEntries(exePath: string): Promise<AutoStartEnt
 }
 
 export async function disableAutoStart(entryType: string, entryName: string): Promise<void> {
-  const key = entryType === 'registry_run_hkcu'
-    ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-    : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-  await execAsync(`reg delete "${key}" /v "${entryName}" /f`, { timeout: 5000 })
+  const key =
+    entryType === 'registry_run_hkcu'
+      ? 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+      : 'HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+  await execFileAsync('reg', ['delete', key, '/v', entryName, '/f'], { timeout: 5000 })
 }

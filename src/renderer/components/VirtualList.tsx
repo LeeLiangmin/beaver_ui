@@ -42,7 +42,10 @@ function VirtualListInner<T>({
 
   const totalHeight = items.length * rowHeight
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
-  const endIndex = Math.min(items.length, Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan)
+  const endIndex = Math.min(
+    items.length,
+    Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan,
+  )
 
   const visibleItems = useMemo(() => {
     const result: ReactNode[] = []
@@ -58,9 +61,7 @@ function VirtualListInner<T>({
     <div ref={containerRef} onScroll={onScroll} className={`overflow-auto ${className}`}>
       {header && <div className="sticky top-0 z-10">{header}</div>}
       <div style={{ height: totalHeight, position: 'relative' }}>
-        <div style={{ position: 'absolute', top: offsetY, left: 0, right: 0 }}>
-          {visibleItems}
-        </div>
+        <div style={{ position: 'absolute', top: offsetY, left: 0, right: 0 }}>{visibleItems}</div>
       </div>
     </div>
   )

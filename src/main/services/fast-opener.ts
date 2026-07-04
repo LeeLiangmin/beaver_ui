@@ -2,58 +2,10 @@ import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { getDb } from './db'
+import type { OpenerItem, OpenerGroup, OpenerData } from '../../shared/types'
 
-export interface FastOpenerItem {
-  id: string
-  name: string
-  path: string
-  isDir: boolean
-  groupId: string
-  createdAt: number
-  lastUsed: number
-  useCount: number
-  sortOrder: number
-}
-
-export interface FastOpenerGroup {
-  id: string
-  name: string
-  color: string
-  sortOrder: number
-  createdAt: number
-}
-
-export interface FastOpenerData {
-  groups: FastOpenerGroup[]
-  items: FastOpenerItem[]
-}
-
-const defaultGroups: FastOpenerGroup[] = []
-let sortCounter = 0
-
-function getStorePath(): string {
-  const base = app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath()
-  return path.join(base, 'fast_opener.json')
-}
-
-function loadStore(): FastOpenerData {
-  try {
-    const p = getStorePath()
-    if (fs.existsSync(p)) {
-      const d = JSON.parse(fs.readFileSync(p, 'utf-8'))
-      if (d.items && d.items.length > 0) sortCounter = Math.max(...d.items.map((i: any) => i.sortOrder || 0))
-      return d
-    }
-  } catch {}
-  return { groups: [...defaultGroups], items: [] }
-}
-
-function saveStore(data: FastOpenerData): void {
-  const p = getStorePath()
-  const dir = path.dirname(p)
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf-8')
-}
+let migrated = false
 
 function uuid(): string {
   return crypto.randomUUID()
@@ -63,16 +15,87 @@ function now(): number {
   return Math.floor(Date.now() / 1000)
 }
 
-export function getAll(): FastOpenerData {
-  return loadStore()
+function itemRowToObj(row: any): OpenerItem {
+  return {
+    id: row.id,
+    name: row.name,
+    path: row.path,
+    isDir: !!row.is_dir,
+    groupId: row.group_id,
+    createdAt: row.created_at,
+    lastUsed: row.last_used,
+    useCount: row.use_count,
+    sortOrder: row.sort_order,
+  }
 }
 
-export function addItem(filePath: string, groupId: string): FastOpenerItem {
-  const store = loadStore()
+function groupRowToObj(row: any): OpenerGroup {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+  }
+}
+
+function migrateFromJson(): void {
+  if (migrated) return
+  migrated = true
+
+  const base = app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath()
+  const jsonPath = path.join(base, 'fast_opener.json')
+  if (!fs.existsSync(jsonPath)) return
+
+  try {
+    const raw = fs.readFileSync(jsonPath, 'utf-8')
+    const data = JSON.parse(raw) as OpenerData
+    const db = getDb()
+
+    const insertGroup = db.prepare(
+      'INSERT OR IGNORE INTO opener_groups (id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
+    )
+    const insertItem = db.prepare(
+      'INSERT OR IGNORE INTO opener_items (id, name, path, is_dir, group_id, created_at, last_used, use_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    )
+
+    const tx = db.transaction(() => {
+      for (const g of data.groups || []) {
+        insertGroup.run(g.id, g.name, g.color, g.sortOrder, g.createdAt)
+      }
+      for (const i of data.items || []) {
+        insertItem.run(i.id, i.name, i.path, i.isDir ? 1 : 0, i.groupId, i.createdAt, i.lastUsed, i.useCount, i.sortOrder)
+      }
+    })
+    tx()
+
+    // Rename old JSON file so it won't be imported again
+    fs.renameSync(jsonPath, jsonPath + '.migrated')
+  } catch {}
+}
+
+export function getAll(): OpenerData {
+  migrateFromJson()
+  const db = getDb()
+  const groups = db
+    .prepare('SELECT * FROM opener_groups ORDER BY sort_order')
+    .all()
+    .map(groupRowToObj as any) as OpenerGroup[]
+  const items = db
+    .prepare('SELECT * FROM opener_items ORDER BY sort_order')
+    .all()
+    .map(itemRowToObj as any) as OpenerItem[]
+  return { groups, items }
+}
+
+export function addItem(filePath: string, groupId: string): OpenerItem {
+  migrateFromJson()
+  const db = getDb()
   const isDir = fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()
   const name = path.basename(filePath)
-  sortCounter++
-  const item: FastOpenerItem = {
+  const maxOrder =
+    (db.prepare('SELECT MAX(sort_order) as m FROM opener_items').get() as any)?.m || 0
+  const item: OpenerItem = {
     id: uuid(),
     name,
     path: filePath,
@@ -81,76 +104,77 @@ export function addItem(filePath: string, groupId: string): FastOpenerItem {
     createdAt: now(),
     lastUsed: 0,
     useCount: 0,
-    sortOrder: sortCounter,
+    sortOrder: maxOrder + 1,
   }
-  store.items.push(item)
-  saveStore(store)
+  db.prepare(
+    'INSERT INTO opener_items (id, name, path, is_dir, group_id, created_at, last_used, use_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  ).run(item.id, item.name, item.path, item.isDir ? 1 : 0, item.groupId, item.createdAt, item.lastUsed, item.useCount, item.sortOrder)
   return item
 }
 
 export function removeItem(id: string): void {
-  const store = loadStore()
-  store.items = store.items.filter(i => i.id !== id)
-  saveStore(store)
+  migrateFromJson()
+  const db = getDb()
+  db.prepare('DELETE FROM opener_items WHERE id = ?').run(id)
 }
 
 export function openItem(id: string): void {
-  const store = loadStore()
-  const item = store.items.find(i => i.id === id)
-  if (item) {
-    item.useCount++
-    item.lastUsed = now()
-    saveStore(store)
-  }
+  migrateFromJson()
+  const db = getDb()
+  db.prepare(
+    'UPDATE opener_items SET use_count = use_count + 1, last_used = ? WHERE id = ?',
+  ).run(now(), id)
 }
 
 export function moveItem(itemId: string, groupId: string): void {
-  const store = loadStore()
-  const item = store.items.find(i => i.id === itemId)
-  if (item) {
-    item.groupId = groupId
-    saveStore(store)
-  }
+  migrateFromJson()
+  const db = getDb()
+  db.prepare('UPDATE opener_items SET group_id = ? WHERE id = ?').run(groupId, itemId)
 }
 
 export function updateSort(ids: string[]): void {
-  const store = loadStore()
-  for (let idx = 0; idx < ids.length; idx++) {
-    const item = store.items.find(i => i.id === ids[idx])
-    if (item) item.sortOrder = idx
-  }
-  saveStore(store)
+  migrateFromJson()
+  const db = getDb()
+  const stmt = db.prepare('UPDATE opener_items SET sort_order = ? WHERE id = ?')
+  const tx = db.transaction(() => {
+    for (let idx = 0; idx < ids.length; idx++) {
+      stmt.run(idx, ids[idx])
+    }
+  })
+  tx()
 }
 
-export function addGroup(name: string, color: string): FastOpenerGroup {
-  const store = loadStore()
-  const maxOrder = store.groups.reduce((max, g) => Math.max(max, g.sortOrder), 0)
-  const group: FastOpenerGroup = {
+export function addGroup(name: string, color: string): OpenerGroup {
+  migrateFromJson()
+  const db = getDb()
+  const maxOrder =
+    (db.prepare('SELECT MAX(sort_order) as m FROM opener_groups').get() as any)?.m || 0
+  const group: OpenerGroup = {
     id: uuid(),
     name,
     color,
     sortOrder: maxOrder + 1,
     createdAt: now(),
   }
-  store.groups.push(group)
-  saveStore(store)
+  db.prepare(
+    'INSERT INTO opener_groups (id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?)',
+  ).run(group.id, group.name, group.color, group.sortOrder, group.createdAt)
   return group
 }
 
-export function updateGroup(group: FastOpenerGroup): void {
-  const store = loadStore()
-  const idx = store.groups.findIndex(g => g.id === group.id)
-  if (idx >= 0) {
-    store.groups[idx] = group
-    saveStore(store)
-  }
+export function updateGroup(group: OpenerGroup): void {
+  migrateFromJson()
+  const db = getDb()
+  db.prepare(
+    'UPDATE opener_groups SET name = ?, color = ?, sort_order = ? WHERE id = ?',
+  ).run(group.name, group.color, group.sortOrder, group.id)
 }
 
 export function removeGroup(id: string): void {
-  const store = loadStore()
-  store.groups = store.groups.filter(g => g.id !== id)
-  store.items = store.items.filter(i => i.groupId !== id)
-  saveStore(store)
+  migrateFromJson()
+  const db = getDb()
+  db.prepare('DELETE FROM opener_items WHERE group_id = ?').run(id)
+  db.prepare('DELETE FROM opener_groups WHERE id = ?').run(id)
 }
 
 export function validatePath(filePath: string): boolean {

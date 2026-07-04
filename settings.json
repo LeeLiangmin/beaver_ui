@@ -1,0 +1,11 @@
+{
+  "dataPath": "F:\\lee_space\\code\\playground\\beaver_ui",
+  "editorCommand": "zed",
+  "aiEnabled": true,
+  "aiBaseUrl": "https://api.deepseek.com",
+  "aiApiKey": "sk-566504fcf7404dbc99e997d376de2c84",
+  "aiModel": "deepseek-v4-flash",
+  "aiLargeFileConsent": true,
+  "aiProxyUrl": "",
+  "aiIgnoreCert": true
+}

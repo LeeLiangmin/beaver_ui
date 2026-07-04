@@ -48,7 +48,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, type: ToastType = 'info') => {
     const id = nextId++
     setToasts((prev) => [...prev, { id, message, type }])
-    const duration = type === 'error' ? 4000 : type === 'warning' ? 3500 : type === 'success' ? 2500 : 3000
+    const duration =
+      type === 'error' ? 4000 : type === 'warning' ? 3500 : type === 'success' ? 2500 : 3000
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
     }, duration)
@@ -67,7 +68,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               <Icon size={16} className={`shrink-0 ${iconColors[t.type]}`} />
               <span className="flex-1">{t.message}</span>
-              <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="shrink-0 opacity-50 hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
+                className="shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+              >
                 <X size={14} />
               </button>
             </div>

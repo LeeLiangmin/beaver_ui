@@ -60,6 +60,28 @@ function initTables() {
     );
     CREATE INDEX IF NOT EXISTS idx_env_group_entries ON env_group_entries(group_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_env_group_entries_unique ON env_group_entries(key, group_id);
+
+    CREATE TABLE IF NOT EXISTS opener_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT 'teal',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS opener_items (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      path TEXT NOT NULL,
+      is_dir INTEGER NOT NULL DEFAULT 0,
+      group_id TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL DEFAULT 0,
+      last_used INTEGER NOT NULL DEFAULT 0,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (group_id) REFERENCES opener_groups(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_opener_items_group ON opener_items(group_id);
   `)
 }
 

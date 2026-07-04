@@ -1,32 +1,15 @@
-import { session, app } from 'electron'
-import path from 'path'
-import fs from 'fs'
+import { session } from 'electron'
 import { getDb } from './db'
+import type { CalendarDay, HistoryEvent } from '../../shared/types'
 
-const { Lunar, Solar } = require('lunar-javascript')
-
-export interface CalendarDay {
-  year: number
-  month: number
-  day: number
-  lunarYear: string
-  lunarMonth: string
-  lunarDay: string
-  festival: string
-  solarTerm: string
-  isToday: boolean
-}
-
-export interface HistoryEvent {
-  year: number
-  title: string
-  type: string
-  desc: string
-}
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Solar } = require('lunar-javascript')
 
 function getCachedEvents(month: number): Map<string, HistoryEvent[]> | null {
   const db = getDb()
-  const stmt = db.prepare('SELECT month, day, year, title, type, desc FROM history_events WHERE month = ?')
+  const stmt = db.prepare(
+    'SELECT month, day, year, title, type, desc FROM history_events WHERE month = ?',
+  )
   const rows = stmt.all(month) as any[]
   if (rows.length === 0) return null
   const data = new Map<string, HistoryEvent[]>()
@@ -40,7 +23,9 @@ function getCachedEvents(month: number): Map<string, HistoryEvent[]> | null {
 
 function saveEvents(month: number, data: Map<string, HistoryEvent[]>) {
   const db = getDb()
-  const insert = db.prepare('INSERT OR IGNORE INTO history_events (month, day, year, title, type, desc) VALUES (?, ?, ?, ?, ?, ?)')
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO history_events (month, day, year, title, type, desc) VALUES (?, ?, ?, ?, ?, ?)',
+  )
   const tx = db.transaction(() => {
     for (const [dayKey, events] of data) {
       const day = parseInt(dayKey.slice(2), 10)
@@ -52,25 +37,20 @@ function saveEvents(month: number, data: Map<string, HistoryEvent[]>) {
   tx()
 }
 
-function debugLog(msg: string, data?: any) {
-  const log = `[${new Date().toISOString()}] ${msg}${data ? ' ' + JSON.stringify(data).slice(0, 500) : ''}\n`
-  try {
-    const base = app.isPackaged ? path.dirname(app.getPath('exe')) : app.getAppPath()
-    fs.appendFileSync(path.join(base, 'calendar_debug.log'), log)
-  } catch {}
-}
-
 function parseResponse(json: any, monthKey: string): Map<string, HistoryEvent[]> {
   const data = new Map<string, HistoryEvent[]>()
   const dayMap = json[monthKey]
   if (dayMap) {
     for (const [dayKey, items] of Object.entries(dayMap) as [string, any[]][]) {
-      data.set(dayKey, (items || []).map((item: any) => ({
-        year: parseInt(item.year, 10) || 0,
-        title: (item.title || '').replace(/<[^>]*>/g, ''),
-        type: item.type || 'event',
-        desc: (item.desc || '').replace(/<[^>]*>/g, ''),
-      })))
+      data.set(
+        dayKey,
+        (items || []).map((item: any) => ({
+          year: parseInt(item.year, 10) || 0,
+          title: (item.title || '').replace(/<[^>]*>/g, ''),
+          type: item.type || 'event',
+          desc: (item.desc || '').replace(/<[^>]*>/g, ''),
+        })),
+      )
     }
   }
   return data
@@ -82,7 +62,6 @@ async function fetchBaikeMonth(month: number): Promise<Map<string, HistoryEvent[
 
   const monthKey = String(month).padStart(2, '0')
   const url = `https://baike.baidu.com/cms/home/eventsOnHistory/${monthKey}.json`
-  debugLog('fetching', { month: monthKey, url })
 
   try {
     const ses = session.defaultSession
@@ -92,18 +71,14 @@ async function fetchBaikeMonth(month: number): Promise<Map<string, HistoryEvent[
     const res = await ses.fetch(url, { signal: controller.signal })
     clearTimeout(timer)
 
-    debugLog('response', { status: res.status, ok: res.ok })
-
     if (!res.ok) return new Map<string, HistoryEvent[]>()
 
     const json = await res.json()
     const data = parseResponse(json, monthKey)
-    debugLog('parsed', { days: data.size, totalEvents: [...data.values()].reduce((s, e) => s + e.length, 0) })
 
     if (data.size > 0) saveEvents(month, data)
     return data
-  } catch (e: any) {
-    debugLog('error', { message: e?.message || String(e) })
+  } catch {
     return new Map<string, HistoryEvent[]>()
   }
 }

@@ -1,26 +1,22 @@
 import fs from 'fs'
 import path from 'path'
 import { BrowserWindow } from 'electron'
-
-export interface SearchRequest {
-  keyword: string
-  searchPath: string
-  fileType?: string
-}
-
-export interface FileInfo {
-  name: string
-  path: string
-  size: number
-  isDir: boolean
-  modTime: number
-}
+import type { SearchRequest, FileInfo } from '../../shared/types'
 
 const SKIP_DIRS = new Set([
-  'node_modules', '.git', '.svn', '.hg',
-  '$Recycle.Bin', 'System Volume Information',
-  'Windows', 'Program Files', 'Program Files (x86)',
-  'ProgramData', 'Recovery', 'MSOCache', 'Config.Msi',
+  'node_modules',
+  '.git',
+  '.svn',
+  '.hg',
+  '$Recycle.Bin',
+  'System Volume Information',
+  'Windows',
+  'Program Files',
+  'Program Files (x86)',
+  'ProgramData',
+  'Recovery',
+  'MSOCache',
+  'Config.Msi',
 ])
 
 function matchesKeyword(fileName: string, keyword: string): boolean {
@@ -71,65 +67,74 @@ export function searchFiles(req: SearchRequest, window: BrowserWindow): void {
     let pending = batch.length
 
     for (const dir of batch) {
-      fs.promises.readdir(dir, { withFileTypes: true }).then(
-        (entries) => {
-          if (signal.aborted) return
-
-          for (const entry of entries) {
+      fs.promises
+        .readdir(dir, { withFileTypes: true })
+        .then(
+          (entries) => {
             if (signal.aborted) return
-            const isDir = entry.isDirectory()
 
-            if (!matchesKeyword(entry.name, req.keyword)) {
-              if (isDir && !SKIP_DIRS.has(entry.name)) {
-                const fullPath = path.join(dir, entry.name)
-                if (!seen.has(fullPath)) {
-                  seen.add(fullPath)
+            for (const entry of entries) {
+              if (signal.aborted) return
+              const isDir = entry.isDirectory()
+
+              if (!matchesKeyword(entry.name, req.keyword)) {
+                if (isDir && !SKIP_DIRS.has(entry.name)) {
+                  const fullPath = path.join(dir, entry.name)
+                  if (!seen.has(fullPath)) {
+                    seen.add(fullPath)
+                    dirQueue.push(fullPath)
+                  }
+                }
+                continue
+              }
+
+              const fullPath = path.join(dir, entry.name)
+              if (seen.has(fullPath)) continue
+              seen.add(fullPath)
+
+              if (isDir) {
+                if (matchesFileType(entry.name, true, req.fileType)) {
+                  results.push({
+                    name: entry.name,
+                    path: fullPath,
+                    size: 0,
+                    isDir: true,
+                    modTime: 0,
+                  })
+                  if (results.length >= BATCH_SIZE) flush()
+                }
+                if (!SKIP_DIRS.has(entry.name)) {
                   dirQueue.push(fullPath)
                 }
-              }
-              continue
-            }
-
-            const fullPath = path.join(dir, entry.name)
-            if (seen.has(fullPath)) continue
-            seen.add(fullPath)
-
-            if (isDir) {
-              if (matchesFileType(entry.name, true, req.fileType)) {
+              } else if (matchesFileType(entry.name, false, req.fileType)) {
+                let size = 0
+                let modTime = 0
+                try {
+                  const stat = fs.statSync(fullPath)
+                  size = stat.size
+                  modTime = stat.mtimeMs
+                } catch {}
                 results.push({
-                  name: entry.name, path: fullPath,
-                  size: 0, isDir: true, modTime: 0,
+                  name: entry.name,
+                  path: fullPath,
+                  size,
+                  isDir: false,
+                  modTime,
                 })
                 if (results.length >= BATCH_SIZE) flush()
               }
-              if (!SKIP_DIRS.has(entry.name)) {
-                dirQueue.push(fullPath)
-              }
-            } else if (matchesFileType(entry.name, false, req.fileType)) {
-              let size = 0
-              let modTime = 0
-              try {
-                const stat = fs.statSync(fullPath)
-                size = stat.size
-                modTime = stat.mtimeMs
-              } catch {}
-              results.push({
-                name: entry.name, path: fullPath,
-                size, isDir: false, modTime,
-              })
-              if (results.length >= BATCH_SIZE) flush()
             }
-          }
 
-          if (results.length >= BATCH_SIZE) flush()
-        },
-        () => {}
-      ).finally(() => {
-        pending--
-        if (pending === 0) {
-          setImmediate(processChunk)
-        }
-      })
+            if (results.length >= BATCH_SIZE) flush()
+          },
+          () => {},
+        )
+        .finally(() => {
+          pending--
+          if (pending === 0) {
+            setImmediate(processChunk)
+          }
+        })
     }
   }
 
