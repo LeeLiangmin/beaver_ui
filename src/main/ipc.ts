@@ -44,6 +44,7 @@ import {
   getGroupEntries,
 } from './services/env-manager'
 import { shell, dialog } from 'electron'
+import { allowFile } from './protocol'
 import { execFile } from 'child_process'
 import fs from 'fs'
 import { RULES, scanCleanup, cancelScan, createScanVersion, cleanupItems, scanLargeFiles, cancelLargeFileScan, createLargeFileScanVersion } from './services/disk-cleaner'
@@ -57,23 +58,24 @@ function err(error: string): IpcResult<never> {
   return { ok: false, error }
 }
 
-export function registerIpcHandlers(): void {
-  ipcMain.handle('settings:get', () => {
+function wrapHandler<T>(fn: (...args: any[]) => T) {
+  return async (_event: Electron.IpcMainInvokeEvent, ...args: any[]): Promise<IpcResult<Awaited<T>>> => {
     try {
-      return ok(loadSettings())
+      const result = await fn(...args)
+      return ok(result)
     } catch (e: any) {
-      return err(e.message)
+      return err(e.message ?? String(e))
     }
-  })
+  }
+}
 
-  ipcMain.handle('settings:save', (_event, s) => {
-    try {
-      saveSettings(s)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
+export function registerIpcHandlers(): void {
+  ipcMain.handle('file:allow', wrapHandler((absPath: string) => {
+    allowFile(absPath)
+  }))
+
+  ipcMain.handle('settings:get', wrapHandler(() => loadSettings()))
+  ipcMain.handle('settings:save', wrapHandler((s: any) => { saveSettings(s) }))
 
   ipcMain.handle('file:search', (event, req) => {
     try {
@@ -82,9 +84,7 @@ export function registerIpcHandlers(): void {
         searchFiles(req, win)
       }
       return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
+    } catch (e: any) { return err(e.message) }
   })
 
   ipcMain.handle('file:searchCancel', () => {
@@ -92,90 +92,17 @@ export function registerIpcHandlers(): void {
     return ok(undefined)
   })
 
-  ipcMain.handle('file:drives', () => {
-    try {
-      return ok(getDrives())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-
-  ipcMain.handle('opener:all', () => {
-    try {
-      return ok(getAll())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:addItem', (_e, filePath, groupId) => {
-    try {
-      return ok(addItem(filePath, groupId))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:removeItem', (_e, id) => {
-    try {
-      removeItem(id)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:openItem', (_e, id) => {
-    try {
-      openItem(id)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:moveItem', (_e, itemId, groupId) => {
-    try {
-      moveItem(itemId, groupId)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:updateSort', (_e, ids) => {
-    try {
-      updateSort(ids)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:addGroup', (_e, name, color) => {
-    try {
-      return ok(addGroup(name, color))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:updateGroup', (_e, group) => {
-    try {
-      updateOpenerGroup(group)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:removeGroup', (_e, id) => {
-    try {
-      removeGroup(id)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('opener:validatePath', (_e, filePath) => {
-    try {
-      return ok(validatePath(filePath))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
+  ipcMain.handle('file:drives', wrapHandler(() => getDrives()))
+  ipcMain.handle('opener:all', wrapHandler(() => getAll()))
+  ipcMain.handle('opener:addItem', wrapHandler((filePath: string, groupId: string) => addItem(filePath, groupId)))
+  ipcMain.handle('opener:removeItem', wrapHandler((id: string) => { removeItem(id) }))
+  ipcMain.handle('opener:openItem', wrapHandler((id: string) => { openItem(id) }))
+  ipcMain.handle('opener:moveItem', wrapHandler((itemId: string, groupId: string) => { moveItem(itemId, groupId) }))
+  ipcMain.handle('opener:updateSort', wrapHandler((ids: string[]) => { updateSort(ids) }))
+  ipcMain.handle('opener:addGroup', wrapHandler((name: string, color: string) => addGroup(name, color)))
+  ipcMain.handle('opener:updateGroup', wrapHandler((group: any) => { updateOpenerGroup(group) }))
+  ipcMain.handle('opener:removeGroup', wrapHandler((id: string) => { removeGroup(id) }))
+  ipcMain.handle('opener:validatePath', wrapHandler((filePath: string) => validatePath(filePath)))
 
   ipcMain.handle('process:list', async (_event) => {
     try {
@@ -187,198 +114,41 @@ export function registerIpcHandlers(): void {
         getProcessesStreaming(win, version)
       })
       return ok(version)
-    } catch (e: any) {
-      return err(e.message)
-    }
+    } catch (e: any) { return err(e.message) }
   })
+
   ipcMain.handle('process:cancelList', () => {
     cancelProcessStreaming()
     return ok(undefined)
   })
-  ipcMain.handle('process:refresh', async () => {
-    try {
-      return ok(await getProcesses())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('process:kill', async (_e, pid) => {
-    try {
-      await killProcess(pid)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('process:restart', async (_e, pid, exePath) => {
-    try {
-      await restartProcess(pid, exePath)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('process:autostart', async (_e, exePath) => {
-    try {
-      return ok(await getAutoStartEntries(exePath))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('process:disableAutostart', async (_e, entryType, entryName) => {
-    try {
-      await disableAutoStart(entryType, entryName)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
 
-  ipcMain.handle('calendar:month', (_e, year, month) => {
-    try {
-      return ok(getMonthData(year, month))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('calendar:history', async (_e, month, day) => {
-    try {
-      return ok(await getHistoryEvents(month, day))
-    } catch (e: any) {
-      return err(e.message + '')
-    }
-  })
+  ipcMain.handle('process:refresh', wrapHandler(() => getProcesses()))
+  ipcMain.handle('process:kill', wrapHandler((pid: number) => killProcess(pid)))
+  ipcMain.handle('process:restart', wrapHandler((pid: number, exePath: string) => restartProcess(pid, exePath)))
+  ipcMain.handle('process:autostart', wrapHandler((exePath: string) => getAutoStartEntries(exePath)))
+  ipcMain.handle('process:disableAutostart', wrapHandler((entryType: string, entryName: string) => disableAutoStart(entryType, entryName)))
 
-  ipcMain.handle('clock:time', () => {
-    try {
-      return ok(getServerTime())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('clock:timezone', () => {
-    try {
-      return ok(getTimezone())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
+  ipcMain.handle('calendar:month', wrapHandler((year: number, month: number) => getMonthData(year, month)))
+  ipcMain.handle('calendar:history', wrapHandler((month: number, day: number) => getHistoryEvents(month, day)))
 
-  ipcMain.handle('env:list', async () => {
-    try {
-      return ok(await getEnvVars())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:set', async (_e, name, value) => {
-    try {
-      await setEnvVar(name, value)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:delete', async (_e, name) => {
-    try {
-      await deleteEnvVar(name)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:setBatch', async (_e, items) => {
-    try {
-      return ok(await setEnvVars(items))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
+  ipcMain.handle('clock:time', wrapHandler(() => getServerTime()))
+  ipcMain.handle('clock:timezone', wrapHandler(() => getTimezone()))
 
-  ipcMain.handle('env:groups', () => {
-    try {
-      return ok(getGroups())
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:createGroup', (_e, name, color) => {
-    try {
-      return ok(createGroup(name, color))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:updateGroup', (_e, group) => {
-    try {
-      updateGroup(group)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:deleteGroup', (_e, id) => {
-    try {
-      deleteGroup(id)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:moveToGroup', (_e, key, groupId) => {
-    try {
-      moveToGroup(key, groupId)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:removeFromGroup', (_e, key, groupId) => {
-    try {
-      removeFromGroup(key, groupId)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:backupGroup', async (_e, groupId) => {
-    try {
-      return ok(await backupGroup(groupId))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:backupGroupItem', async (_e, groupId, key) => {
-    try {
-      await backupGroupItem(groupId, key)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-
-  ipcMain.handle('env:restoreGroup', async (_e, groupId) => {
-    try {
-      return ok(await restoreGroup(groupId))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:restoreGroupItem', async (_e, groupId, key) => {
-    try {
-      await restoreGroupItem(groupId, key)
-      return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
-  ipcMain.handle('env:groupEntries', (_e, groupId) => {
-    try {
-      return ok(getGroupEntries(groupId))
-    } catch (e: any) {
-      return err(e.message)
-    }
-  })
+  ipcMain.handle('env:list', wrapHandler(() => getEnvVars()))
+  ipcMain.handle('env:set', wrapHandler((name: string, value: string) => setEnvVar(name, value)))
+  ipcMain.handle('env:delete', wrapHandler((name: string) => deleteEnvVar(name)))
+  ipcMain.handle('env:setBatch', wrapHandler((items: any) => setEnvVars(items)))
+  ipcMain.handle('env:groups', wrapHandler(() => getGroups()))
+  ipcMain.handle('env:createGroup', wrapHandler((name: string, color: string) => createGroup(name, color)))
+  ipcMain.handle('env:updateGroup', wrapHandler((group: any) => { updateGroup(group) }))
+  ipcMain.handle('env:deleteGroup', wrapHandler((id: string) => { deleteGroup(id) }))
+  ipcMain.handle('env:moveToGroup', wrapHandler((key: string, groupId: string) => { moveToGroup(key, groupId) }))
+  ipcMain.handle('env:removeFromGroup', wrapHandler((key: string, groupId: string) => { removeFromGroup(key, groupId) }))
+  ipcMain.handle('env:backupGroup', wrapHandler((groupId: string) => backupGroup(groupId)))
+  ipcMain.handle('env:backupGroupItem', wrapHandler((groupId: string, key: string) => backupGroupItem(groupId, key)))
+  ipcMain.handle('env:restoreGroup', wrapHandler((groupId: string) => restoreGroup(groupId)))
+  ipcMain.handle('env:restoreGroupItem', wrapHandler((groupId: string, key: string) => restoreGroupItem(groupId, key)))
+  ipcMain.handle('env:groupEntries', wrapHandler((groupId: string) => getGroupEntries(groupId)))
 
   ipcMain.handle('shell:openPath', (_e, filePath) => {
     try {
@@ -397,18 +167,14 @@ export function registerIpcHandlers(): void {
         shell.openPath(filePath)
       }
       return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
+    } catch (e: any) { return err(e.message) }
   })
 
   ipcMain.handle('shell:openLocation', (_e, filePath) => {
     try {
       shell.showItemInFolder(filePath)
       return ok(undefined)
-    } catch (e: any) {
-      return err(e.message)
-    }
+    } catch (e: any) { return err(e.message) }
   })
 
   ipcMain.handle('dialog:selectDirectory', async () => {
@@ -418,9 +184,7 @@ export function registerIpcHandlers(): void {
         title: '选择目录',
       })
       return ok(result.canceled ? '' : result.filePaths[0] || '')
-    } catch (e: any) {
-      return err(e.message)
-    }
+    } catch (e: any) { return err(e.message) }
   })
 
   ipcMain.handle('dialog:selectFile', async () => {
@@ -430,15 +194,11 @@ export function registerIpcHandlers(): void {
         title: '选择文件',
       })
       return ok(result.canceled ? '' : result.filePaths[0] || '')
-    } catch (e: any) {
-      return err(e.message)
-    }
+    } catch (e: any) { return err(e.message) }
   })
 
   // ── Cleaner ──────────────────────────────────────────────────
-  ipcMain.handle('cleaner:getRules', () => {
-    try { return ok(RULES) } catch (e: any) { return err(e.message) }
-  })
+  ipcMain.handle('cleaner:getRules', wrapHandler(() => RULES))
 
   ipcMain.handle('cleaner:scan', async (event) => {
     try {
@@ -455,11 +215,7 @@ export function registerIpcHandlers(): void {
     return ok(undefined)
   })
 
-  ipcMain.handle('cleaner:clean', async (_e, ruleIds, permanent) => {
-    try {
-      return ok(await cleanupItems(ruleIds, permanent))
-    } catch (e: any) { return err(e.message) }
-  })
+  ipcMain.handle('cleaner:clean', wrapHandler((ruleIds: string[], permanent: boolean) => cleanupItems(ruleIds, permanent)))
 
   ipcMain.handle('cleaner:scanLargeFiles', async (event, req) => {
     try {
@@ -476,50 +232,21 @@ export function registerIpcHandlers(): void {
     return ok(undefined)
   })
 
-  ipcMain.handle('cleaner:trashFile', async (_e, filePath) => {
-    try {
-      shell.trashItem(filePath)
-      return ok(undefined)
-    } catch (e: any) { return err(e.message) }
-  })
+  ipcMain.handle('cleaner:trashFile', wrapHandler((filePath: string) => shell.trashItem(filePath)))
 
   // ── AI ───────────────────────────────────────────────────────
-  ipcMain.handle('ai:cleanupAdvice', async (_e, stats) => {
-    try { return ok(await getCleanupAdvice(stats)) } catch (e: any) { return err(e.message) }
-  })
-
-  ipcMain.handle('ai:analyzeLargeFiles', async (_e, files) => {
-    try { return ok(await analyzeLargeFiles(files)) } catch (e: any) { return err(e.message) }
-  })
-
-  ipcMain.handle('ai:parseIntent', async (_e, text) => {
-    try { return ok(await parseIntent(text)) } catch (e: any) { return err(e.message) }
-  })
-
-  ipcMain.handle('ai:chat', async (_e, history, scanResults) => {
-    try { return ok(await cleanupChat(history, scanResults)) } catch (e: any) { return err(e.message) }
-  })
-
-  ipcMain.handle('ai:classifyLargeFiles', async (_e, files) => {
-    try { return ok(await classifyLargeFiles(files)) } catch (e: any) { return err(e.message) }
-  })
-
-  ipcMain.handle('ai:testConnection', async (_e, baseUrl, apiKey, model, proxyUrl, ignoreCert) => {
-    try { return ok(await testConnection(baseUrl, apiKey, model, proxyUrl, ignoreCert)) } catch (e: any) { return err(e.message) }
-  })
-
-  ipcMain.handle('ai:generateInsights', async (_e, stats) => {
-    try { return ok(await generateInsights(stats)) } catch (e: any) { return err(e.message) }
-  })
-
+  ipcMain.handle('ai:cleanupAdvice', wrapHandler((stats: any) => getCleanupAdvice(stats)))
+  ipcMain.handle('ai:analyzeLargeFiles', wrapHandler((files: any) => analyzeLargeFiles(files)))
+  ipcMain.handle('ai:parseIntent', wrapHandler((text: string) => parseIntent(text)))
+  ipcMain.handle('ai:chat', wrapHandler((history: any, scanResults: any) => cleanupChat(history, scanResults)))
+  ipcMain.handle('ai:classifyLargeFiles', wrapHandler((files: any) => classifyLargeFiles(files)))
+  ipcMain.handle('ai:testConnection', wrapHandler((baseUrl: string, apiKey: string, model: string, proxyUrl?: string, ignoreCert?: boolean) => testConnection(baseUrl, apiKey, model, proxyUrl, ignoreCert)))
+  ipcMain.handle('ai:generateInsights', wrapHandler((stats: any) => generateInsights(stats)))
   ipcMain.handle('ai:planScan', async () => {
     try {
       clearNarratedRules()
       return ok(await planScan())
     } catch (e: any) { return err(e.message) }
   })
-
-  ipcMain.handle('ai:narrateScanProgress', async (_e, results, alreadyNarrated) => {
-    try { return ok(await narrateScanProgress(results, alreadyNarrated)) } catch (e: any) { return err(e.message) }
-  })
+  ipcMain.handle('ai:narrateScanProgress', wrapHandler((results: any, alreadyNarrated: string[]) => narrateScanProgress(results, alreadyNarrated)))
 }

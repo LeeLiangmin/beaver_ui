@@ -19,8 +19,8 @@ const SKIP_DIRS = new Set([
   'Config.Msi',
 ])
 
-function matchesKeyword(fileName: string, keyword: string): boolean {
-  return fileName.toLowerCase().includes(keyword.toLowerCase())
+function matchesKeyword(fileName: string, lowerKeyword: string): boolean {
+  return fileName.toLowerCase().includes(lowerKeyword)
 }
 
 function matchesFileType(fileName: string, isDir: boolean, fileType?: string): boolean {
@@ -43,6 +43,7 @@ export function searchFiles(req: SearchRequest, window: BrowserWindow): void {
   const dirQueue: string[] = [req.searchPath]
   const seen = new Set<string>()
   const MAX_CONCURRENT = 32
+  const lowerKeyword = req.keyword.toLowerCase()
 
   function flush() {
     if (results.length > 0) {
@@ -51,7 +52,75 @@ export function searchFiles(req: SearchRequest, window: BrowserWindow): void {
     }
   }
 
-  function processChunk(): void {
+  async function processDir(dir: string): Promise<void> {
+    let entries: fs.Dirent[]
+    try {
+      entries = await fs.promises.readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+
+    const statJobs: Promise<void>[] = []
+
+    for (const entry of entries) {
+      if (signal.aborted) return
+      const isDir = entry.isDirectory()
+
+      if (!matchesKeyword(entry.name, lowerKeyword)) {
+        if (isDir && !SKIP_DIRS.has(entry.name)) {
+          const fullPath = path.join(dir, entry.name)
+          if (!seen.has(fullPath)) {
+            seen.add(fullPath)
+            dirQueue.push(fullPath)
+          }
+        }
+        continue
+      }
+
+      const fullPath = path.join(dir, entry.name)
+      if (seen.has(fullPath)) continue
+      seen.add(fullPath)
+
+      if (isDir) {
+        if (matchesFileType(entry.name, true, req.fileType)) {
+          results.push({
+            name: entry.name,
+            path: fullPath,
+            size: 0,
+            isDir: true,
+            modTime: 0,
+          })
+          if (results.length >= BATCH_SIZE) flush()
+        }
+        if (!SKIP_DIRS.has(entry.name)) {
+          dirQueue.push(fullPath)
+        }
+      } else if (matchesFileType(entry.name, false, req.fileType)) {
+        statJobs.push(
+          fs.promises.lstat(fullPath).then(
+            (stat) => {
+              if (signal.aborted) return
+              results.push({
+                name: entry.name,
+                path: fullPath,
+                size: stat.size,
+                isDir: false,
+                modTime: stat.mtimeMs,
+              })
+              if (results.length >= BATCH_SIZE) flush()
+            },
+            () => {},
+          ),
+        )
+      }
+    }
+
+    if (statJobs.length > 0) {
+      await Promise.allSettled(statJobs)
+    }
+  }
+
+  async function processChunk(): Promise<void> {
     if (signal.aborted) {
       window.webContents.send('file:complete')
       return
@@ -64,78 +133,8 @@ export function searchFiles(req: SearchRequest, window: BrowserWindow): void {
     }
 
     const batch = dirQueue.splice(0, MAX_CONCURRENT)
-    let pending = batch.length
-
-    for (const dir of batch) {
-      fs.promises
-        .readdir(dir, { withFileTypes: true })
-        .then(
-          (entries) => {
-            if (signal.aborted) return
-
-            for (const entry of entries) {
-              if (signal.aborted) return
-              const isDir = entry.isDirectory()
-
-              if (!matchesKeyword(entry.name, req.keyword)) {
-                if (isDir && !SKIP_DIRS.has(entry.name)) {
-                  const fullPath = path.join(dir, entry.name)
-                  if (!seen.has(fullPath)) {
-                    seen.add(fullPath)
-                    dirQueue.push(fullPath)
-                  }
-                }
-                continue
-              }
-
-              const fullPath = path.join(dir, entry.name)
-              if (seen.has(fullPath)) continue
-              seen.add(fullPath)
-
-              if (isDir) {
-                if (matchesFileType(entry.name, true, req.fileType)) {
-                  results.push({
-                    name: entry.name,
-                    path: fullPath,
-                    size: 0,
-                    isDir: true,
-                    modTime: 0,
-                  })
-                  if (results.length >= BATCH_SIZE) flush()
-                }
-                if (!SKIP_DIRS.has(entry.name)) {
-                  dirQueue.push(fullPath)
-                }
-              } else if (matchesFileType(entry.name, false, req.fileType)) {
-                let size = 0
-                let modTime = 0
-                try {
-                  const stat = fs.statSync(fullPath)
-                  size = stat.size
-                  modTime = stat.mtimeMs
-                } catch {}
-                results.push({
-                  name: entry.name,
-                  path: fullPath,
-                  size,
-                  isDir: false,
-                  modTime,
-                })
-                if (results.length >= BATCH_SIZE) flush()
-              }
-            }
-
-            if (results.length >= BATCH_SIZE) flush()
-          },
-          () => {},
-        )
-        .finally(() => {
-          pending--
-          if (pending === 0) {
-            setImmediate(processChunk)
-          }
-        })
-    }
+    await Promise.allSettled(batch.map((dir) => processDir(dir)))
+    setImmediate(processChunk)
   }
 
   setImmediate(processChunk)

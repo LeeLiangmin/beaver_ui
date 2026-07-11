@@ -246,55 +246,85 @@ export function resolveRulePaths(ruleId: string): string[] {
 // ── Scanning ─────────────────────────────────────────────────────
 const SKIP_NAMES = new Set(['node_modules', '.git', '.svn', '.hg'])
 
-function scanDir(dirPath: string, collect: { count: number; bytes: number }): void {
-  if (!fs.existsSync(dirPath)) return
+async function scanDirAsync(dirPath: string, collect: { count: number; bytes: number }): Promise<void> {
   let entries: fs.Dirent[]
   try {
-    entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
   } catch {
     return
   }
+
+  const childPromises: Promise<void>[] = []
+  const statJobs: Promise<void>[] = []
+
   for (const entry of entries) {
     const full = path.join(dirPath, entry.name)
     if (SKIP_NAMES.has(entry.name)) continue
     try {
       if (entry.isDirectory()) {
-        scanDir(full, collect)
+        childPromises.push(scanDirAsync(full, collect))
       } else if (entry.isFile()) {
-        const stat = fs.statSync(full)
-        collect.bytes += stat.size
-        collect.count++
+        statJobs.push(
+          fs.promises.lstat(full).then(
+            (stat) => {
+              collect.bytes += stat.size
+              collect.count++
+            },
+            () => {},
+          ),
+        )
       }
     } catch {
       // permission / locked — skip silently
     }
   }
+
+  if (statJobs.length > 0) await Promise.allSettled(statJobs)
+  if (childPromises.length > 0) await Promise.allSettled(childPromises)
 }
 
-function scanRecycleBin(): CleanupScanResult {
+async function scanRecycleBinAsync(): Promise<CleanupScanResult> {
   const drives: string[] = []
   for (let code = 65; code <= 90; code++) {
     const letter = String.fromCharCode(code)
     const rp = path.join(`${letter}:\\`, '$Recycle.Bin')
-    if (fs.existsSync(rp)) drives.push(rp)
-  }
-  const collect = { count: 0, bytes: 0 }
-  for (const d of drives) {
     try {
-      const entries = fs.readdirSync(d, { withFileTypes: true })
-      for (const e of entries) {
-        try {
-          const full = path.join(d, e.name)
-          scanDir(full, collect)
-        } catch {}
-      }
+      await fs.promises.access(rp)
+      drives.push(rp)
     } catch {}
   }
+  const collect = { count: 0, bytes: 0 }
+  const drivePromises: Promise<void>[] = []
+  for (const d of drives) {
+    drivePromises.push(
+      (async () => {
+        let entries: fs.Dirent[]
+        try {
+          entries = await fs.promises.readdir(d, { withFileTypes: true })
+        } catch {
+          return
+        }
+        const subPromises: Promise<void>[] = []
+        for (const e of entries) {
+          subPromises.push(
+            (async () => {
+              try {
+                const full = path.join(d, e.name)
+                await scanDirAsync(full, collect)
+              } catch {}
+            })(),
+          )
+        }
+        await Promise.allSettled(subPromises)
+      })(),
+    )
+  }
+  await Promise.allSettled(drivePromises)
   return { ruleId: 'recycle-bin', sizeBytes: collect.bytes, fileCount: collect.count, accessible: true }
 }
 
-export function scanRule(ruleId: string): CleanupScanResult {
-  if (ruleId === 'recycle-bin') return scanRecycleBin()
+export async function scanRuleAsync(ruleId: string): Promise<CleanupScanResult> {
+  if (ruleId === 'recycle-bin') return scanRecycleBinAsync()
 
   const roots = resolveRulePaths(ruleId)
   const collect = { count: 0, bytes: 0 }
@@ -302,14 +332,14 @@ export function scanRule(ruleId: string): CleanupScanResult {
   let skippedReason: string | undefined
 
   for (const r of roots) {
-    if (!fs.existsSync(r)) {
-      accessible = false
-      skippedReason = `路径不存在: ${r}`
-      continue
-    }
     try {
-      fs.accessSync(r, fs.constants.R_OK | fs.constants.W_OK)
+      await fs.promises.access(r, fs.constants.R_OK | fs.constants.W_OK)
     } catch (e: any) {
+      if (!await fs.promises.access(r).then(() => true, () => false)) {
+        accessible = false
+        skippedReason = `路径不存在: ${r}`
+        continue
+      }
       accessible = false
       if (e.code === 'EPERM' || e.code === 'EACCES') {
         skippedReason = '需要管理员权限'
@@ -318,7 +348,7 @@ export function scanRule(ruleId: string): CleanupScanResult {
       }
       continue
     }
-    scanDir(r, collect)
+    await scanDirAsync(r, collect)
   }
 
   return {
@@ -350,7 +380,7 @@ export async function scanCleanup(win: BrowserWindow, version: number): Promise<
   const results: CleanupScanResult[] = []
   for (const rule of RULES) {
     if (!isScanActive(version)) return
-    const result = scanRule(rule.id)
+    const result = await scanRuleAsync(rule.id)
     results.push(result)
     try {
       win.webContents.send('cleaner:scanProgress', result)
@@ -404,6 +434,8 @@ function deleteRecursive(dirPath: string, permanent: boolean): { deleted: number
 }
 
 export async function cleanupItems(ruleIds: string[], permanent: boolean): Promise<CleanupResult[]> {
+  if (!Array.isArray(ruleIds) || ruleIds.length === 0) return []
+
   const results: CleanupResult[] = []
 
   for (const ruleId of ruleIds) {
@@ -469,10 +501,12 @@ export function createLargeFileScanVersion(): number {
 
 export function scanLargeFiles(req: LargeFileScanRequest, win: BrowserWindow, version: number): void {
   const BATCH_SIZE = 40
+  const CHUNK_SIZE = 8
   const MAX_DEPTH = 15
   const batch: LargeFile[] = []
   const minBytes = req.minSizeMB * 1024 * 1024
   const seen = new Set<string>()
+  const queue: { dir: string; depth: number }[] = [{ dir: req.searchPath, depth: 0 }]
 
   function flush() {
     if (batch.length > 0) {
@@ -481,36 +515,64 @@ export function scanLargeFiles(req: LargeFileScanRequest, win: BrowserWindow, ve
     }
   }
 
-  function walk(dirPath: string, depth: number) {
-    if (version !== largeFileVersion || depth > MAX_DEPTH) return
+  async function processDir(dirPath: string, depth: number): Promise<void> {
     let entries: fs.Dirent[]
-    try { entries = fs.readdirSync(dirPath, { withFileTypes: true }) } catch { return }
+    try {
+      entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
+    } catch {
+      return
+    }
+
+    const statJobs: Promise<void>[] = []
 
     for (const entry of entries) {
       if (version !== largeFileVersion) return
+      if (SKIP_NAMES.has(entry.name)) continue
+
       const full = path.join(dirPath, entry.name)
-      if (seen.has(full) || SKIP_NAMES.has(entry.name)) continue
+      if (seen.has(full)) continue
       seen.add(full)
 
-      try {
-        if (entry.isDirectory()) {
-          walk(full, depth + 1)
-        } else if (entry.isFile()) {
-          const stat = fs.statSync(full)
-          if (stat.size >= minBytes) {
-            batch.push({ path: full, name: entry.name, sizeBytes: stat.size, modTime: stat.mtimeMs })
-            if (batch.length >= BATCH_SIZE) flush()
-          }
+      if (entry.isDirectory()) {
+        if (depth < MAX_DEPTH) {
+          queue.push({ dir: full, depth: depth + 1 })
         }
-      } catch {}
+      } else if (entry.isFile()) {
+        statJobs.push(
+          fs.promises.lstat(full).then(
+            (stat) => {
+              if (version !== largeFileVersion) return
+              if (stat.size >= minBytes) {
+                batch.push({ path: full, name: entry.name, sizeBytes: stat.size, modTime: stat.mtimeMs })
+                if (batch.length >= BATCH_SIZE) flush()
+              }
+            },
+            () => {},
+          ),
+        )
+      }
+    }
+
+    if (statJobs.length > 0) {
+      await Promise.allSettled(statJobs)
     }
   }
 
-  setImmediate(() => {
-    walk(req.searchPath, 0)
-    flush()
-    try { win.webContents.send('cleaner:largeFileComplete') } catch {}
-  })
+  async function processChunk(): Promise<void> {
+    if (version !== largeFileVersion) return
+
+    if (queue.length === 0) {
+      flush()
+      try { win.webContents.send('cleaner:largeFileComplete') } catch {}
+      return
+    }
+
+    const chunk = queue.splice(0, CHUNK_SIZE)
+    await Promise.allSettled(chunk.map(({ dir, depth }) => processDir(dir, depth)))
+    setImmediate(processChunk)
+  }
+
+  setImmediate(processChunk)
 }
 
 // ── Local large file classification ───────────────────────────────

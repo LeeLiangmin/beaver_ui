@@ -77,7 +77,7 @@ export default function RuleList({
         const someSelected = allIds.some((id) => selectedIds.has(id))
 
         return (
-          <div key={cat} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div key={cat} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors">
               <button
                 onClick={() => toggleCollapse(cat)}
@@ -97,7 +97,7 @@ export default function RuleList({
               <span className="text-lg leading-none">{meta.emoji}</span>
               <span className="text-sm font-semibold text-gray-700 flex-1">
                 {meta.label}
-                <span className="ml-1.5 text-[11px] font-normal text-gray-400">({items.length})</span>
+                <span className="ml-1.5 text-2xs font-normal text-gray-400">({items.length})</span>
               </span>
               <span className="text-xs text-gray-500 tabular-nums">
                 {totalCount.toLocaleString()} 文件 · <span className="font-semibold text-gray-700">{formatSize(totalSize)}</span>
@@ -130,9 +130,9 @@ export default function RuleList({
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-gray-400 truncate">{rule.description}</div>
+                        <div className="text-2xs text-gray-400 truncate">{rule.description}</div>
                       </div>
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${risk.bg} ${risk.text} shrink-0 mr-2`}>
+                      <span className={`text-2xs font-medium px-1.5 py-0.5 rounded-full ${risk.bg} ${risk.text} shrink-0 mr-2`}>
                         {risk.label}
                       </span>
                       <div className="text-xs text-gray-500 tabular-nums w-24 text-right shrink-0">
@@ -149,7 +149,7 @@ export default function RuleList({
 
       {/* Inaccessible items */}
       {inaccessibleResults.length > 0 && (
-        <div className="bg-gray-50/60 rounded-xl border border-gray-200 p-3">
+        <div className="bg-gray-50/60 rounded-2xl border border-gray-200 p-3">
           <div className="flex items-center gap-1.5 mb-2 text-xs text-gray-500">
             <AlertTriangle size={12} />
             以下类别当前无法扫描

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import Sidebar from './components/Sidebar'
 import ProgressBar from './components/ProgressBar'
 import ErrorBoundary from './components/ErrorBoundary'
+import CommandPalette from './components/CommandPalette'
 
 const Welcome = lazy(() => import('./components/Welcome'))
 const FileSearch = lazy(() => import('./components/FileSearch'))
@@ -35,9 +36,29 @@ function TabFallback() {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('welcome')
+  const [cmdOpen, setCmdOpen] = useState(false)
+
+  const selectTab = useCallback((id: string) => setActiveTab(id as TabId), [])
+
+  const commands = useMemo(() => [
+    ...tabs.map((t, i) => ({
+      id: t.id,
+      label: t.label,
+      shortcut: `Ctrl+${i + 1}`,
+      action: () => setActiveTab(t.id),
+    })),
+    { id: 'home', label: '首页', shortcut: 'Ctrl+0', action: () => setActiveTab('welcome') },
+    { id: 'settings-cmd', label: '全局设置', action: () => setActiveTab('settings') },
+  ], [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Command palette: Ctrl+K
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && !e.altKey) {
+        e.preventDefault()
+        setCmdOpen((prev) => !prev)
+        return
+      }
       if (e.ctrlKey && !e.altKey && !e.metaKey) {
         const idx = parseInt(e.key, 10)
         if (idx >= 1 && idx <= 7) {
@@ -54,14 +75,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const selectTab = useCallback((id: string) => setActiveTab(id as TabId), [])
-
   return (
     <div className="flex h-screen overflow-hidden bg-surface-alt">
       <Sidebar tabs={tabs} activeTab={activeTab} onSelectTab={selectTab} />
-      <main className="flex-1 overflow-auto p-6 bg-surface-alt">
+      <main className="flex-1 overflow-hidden p-6 bg-surface-alt">
         <Suspense fallback={<TabFallback />}>
           <ErrorBoundary key={activeTab}>
+            <div className="animate-tab-enter h-full">
             {activeTab === 'welcome' && <Welcome tabs={tabs} onSelectTab={selectTab} />}
             {activeTab === 'filesearch' && <FileSearch />}
             {activeTab === 'fastopener' && <FastOpener />}
@@ -71,9 +91,11 @@ export default function App() {
             {activeTab === 'env' && <EnvManager />}
             {activeTab === 'cleaner' && <DiskCleaner />}
             {activeTab === 'settings' && <SettingsPage />}
+            </div>
           </ErrorBoundary>
         </Suspense>
       </main>
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} commands={commands} />
     </div>
   )
 }

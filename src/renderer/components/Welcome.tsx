@@ -38,9 +38,9 @@ export default memo(function Welcome({ tabs, onSelectTab }: WelcomeProps) {
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl border border-gray-200 hover:border-primary/40 hover:shadow-card transition-all text-center group"
+              className="flex flex-col items-center gap-3 p-6 bg-white rounded-2xl border border-gray-200 hover:border-primary/40 hover:shadow-card transition-all text-center group"
             >
-              <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-primary-light text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-primary-light text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                 {Icon && <Icon size={24} />}
               </div>
               <span className="font-medium text-gray-700 text-sm">{tab.label}</span>

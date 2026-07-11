@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { RULES, resolveRulePaths, scanRule, classifyLargeFileLocally, groupLargeFiles } from './disk-cleaner'
+import { RULES, resolveRulePaths, scanRuleAsync, classifyLargeFileLocally, groupLargeFiles } from './disk-cleaner'
 import path from 'path'
 
 describe('RULES', () => {
@@ -55,17 +55,17 @@ describe('resolveRulePaths', () => {
   })
 })
 
-describe('scanRule', () => {
-  it('returns a result for a valid rule', () => {
-    const result = scanRule('user-temp')
+describe('scanRuleAsync', () => {
+  it('returns a result for a valid rule', async () => {
+    const result = await scanRuleAsync('user-temp')
     expect(result.ruleId).toBe('user-temp')
     expect(typeof result.sizeBytes).toBe('number')
     expect(typeof result.fileCount).toBe('number')
     expect(result.accessible).toBeDefined()
   })
 
-  it('handles unknown rule gracefully', () => {
-    const result = scanRule('nonexistent')
+  it('handles unknown rule gracefully', async () => {
+    const result = await scanRuleAsync('nonexistent')
     expect(result.ruleId).toBe('nonexistent')
     expect(result.sizeBytes).toBe(0)
   })

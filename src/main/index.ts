@@ -2,6 +2,8 @@ import { app, BrowserWindow, session } from 'electron'
 import path from 'path'
 import { registerIpcHandlers } from './ipc'
 import { closeDb } from './services/db'
+import './protocol'
+import { setupAppFileProtocol } from './protocol'
 
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev')
 
@@ -45,13 +47,14 @@ function createWindow() {
 
 app.whenReady().then(() => {
   session.defaultSession.setProxy({ mode: 'system' })
+  setupAppFileProtocol()
   if (!isDev) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://baike.baidu.com; img-src 'self' data:; font-src 'self' data:;",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://baike.baidu.com; img-src 'self' appfile: data:; font-src 'self' data:; frame-src 'self' appfile:;",
           ],
         },
       })

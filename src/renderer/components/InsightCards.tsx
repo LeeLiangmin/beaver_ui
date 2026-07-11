@@ -20,7 +20,7 @@ export default function InsightCards({ insights, loading, onApplyCard, onQuickAc
     return (
       <div className="grid grid-cols-2 gap-3 mt-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-xl p-4 border border-gray-200 animate-pulse">
+          <div key={i} className="bg-white rounded-2xl p-4 border border-gray-200 animate-pulse">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 bg-gray-200 rounded" />
               <div className="w-24 h-4 bg-gray-200 rounded" />
@@ -40,7 +40,7 @@ export default function InsightCards({ insights, loading, onApplyCard, onQuickAc
       {/* Quick action pills */}
       {insights.quickActions.length > 0 && (
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] font-semibold text-gray-500 shrink-0">快捷方案</span>
+          <span className="text-2xs font-semibold text-gray-500 shrink-0">快捷方案</span>
           <div className="flex flex-wrap gap-1.5">
             {insights.quickActions.map((qa, i) => (
               <button
@@ -61,7 +61,7 @@ export default function InsightCards({ insights, loading, onApplyCard, onQuickAc
         <>
           <div className="flex items-center gap-1.5 mb-2">
             <Sparkles size={12} className="text-purple-500" />
-            <span className="text-[11px] font-semibold text-gray-500">智能建议</span>
+            <span className="text-2xs font-semibold text-gray-500">智能建议</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {insights.cards.map((card) => {
@@ -69,14 +69,14 @@ export default function InsightCards({ insights, loading, onApplyCard, onQuickAc
               return (
                 <div
                   key={card.id}
-                  className={`bg-gradient-to-br ${style.bg} rounded-xl p-4 border ${style.border} hover:shadow-md transition-shadow`}
+                  className={`bg-gradient-to-br ${style.bg} rounded-2xl p-4 border ${style.border} hover:shadow-md transition-shadow`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-2xl shrink-0">{card.emoji}</span>
                       <h3 className="font-semibold text-gray-800 text-sm truncate">{card.title}</h3>
                     </div>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${style.badgeBg} ${style.badgeText} shrink-0`}>
+                    <span className={`text-2xs font-medium px-1.5 py-0.5 rounded-full ${style.badgeBg} ${style.badgeText} shrink-0`}>
                       {style.label}
                     </span>
                   </div>
@@ -89,7 +89,7 @@ export default function InsightCards({ insights, loading, onApplyCard, onQuickAc
                     </div>
                     <button
                       onClick={() => onApplyCard(card.ruleIds)}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-white rounded-lg text-xs font-medium text-gray-700 hover:text-primary hover:shadow-sm border border-gray-200 transition-all"
+                      className="flex items-center gap-1 px-2.5 py-1 bg-white rounded-2xl text-xs font-medium text-gray-700 hover:text-primary hover:shadow-sm border border-gray-200 transition-all"
                     >
                       {card.actionLabel}
                       <ArrowRight size={11} />

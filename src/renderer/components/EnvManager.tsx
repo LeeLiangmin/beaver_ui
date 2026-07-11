@@ -47,7 +47,7 @@ export default function EnvManager() {
             value={ctx.searchKeyword}
             onChange={(e) => ctx.setSearchKeyword(e.target.value)}
             placeholder="搜索环境变量名…"
-            className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+            className="w-full border border-gray-300 rounded-2xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
           />
         </div>
         <span className="text-xs text-gray-400 ml-2">
@@ -58,14 +58,14 @@ export default function EnvManager() {
           <button
             onClick={ctx.refresh}
             disabled={ctx.loading}
-            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-xs hover:bg-primary-hover disabled:opacity-30 shadow-sm transition-colors"
+            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-2xl text-xs hover:bg-primary-hover disabled:opacity-30 shadow-sm transition-colors"
           >
             <RefreshCw size={13} className={ctx.loading ? 'animate-spin' : ''} />
             刷新
           </button>
           <button
             onClick={() => ctx.setAddDialog(true)}
-            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-xs hover:bg-primary-hover shadow-sm transition-colors"
+            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-2xl text-xs hover:bg-primary-hover shadow-sm transition-colors"
           >
             <Plus size={13} />
             新增
@@ -74,13 +74,13 @@ export default function EnvManager() {
             <div className="relative">
               <button
                 onClick={() => ctx.setBatchMenuOpen(!ctx.batchMenuOpen)}
-                className="flex items-center gap-1 px-3 py-2 bg-purple-500 text-white rounded-lg text-xs hover:bg-purple-600 shadow-sm transition-colors"
+                className="flex items-center gap-1 px-3 py-2 bg-purple-500 text-white rounded-2xl text-xs hover:bg-purple-600 shadow-sm transition-colors"
               >
                 批量加入分组 ({ctx.selectedKeys.size})
               </button>
               {ctx.batchMenuOpen && (
                 <div
-                  className="absolute top-full right-0 mt-1 bg-white rounded-xl shadow-elevated border border-gray-200 py-1 z-30 min-w-[140px]"
+                  className="absolute top-full right-0 mt-1 bg-white rounded-2xl shadow-elevated border border-gray-200 py-1 z-30 min-w-[140px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -113,7 +113,7 @@ export default function EnvManager() {
       <div className="flex-1 min-h-0 flex gap-3">
         {/* Env var list */}
         <div className="flex-[2] min-w-0 flex flex-col">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-card flex-1 flex flex-col min-h-0">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-card flex-1 flex flex-col min-h-0">
             {ctx.loading && ctx.envVars.length === 0 ? (
               <div>
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -164,14 +164,14 @@ export default function EnvManager() {
                             e.stopPropagation()
                             ctx.setMoveMenuId(ctx.moveMenuId === item.key ? null : item.key)
                           }}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-500 hover:bg-purple-50 transition-colors"
+                          className="w-7 h-7 flex items-center justify-center rounded-2xl text-gray-400 hover:text-purple-500 hover:bg-purple-50 transition-colors"
                           title="加入分组"
                         >
                           <ArrowRight size={15} />
                         </button>
                         {ctx.moveMenuId === item.key && (
                           <div
-                            className="absolute bottom-full right-0 mb-1 bg-white rounded-xl shadow-elevated border border-gray-200 py-1 z-20 min-w-[120px]"
+                            className="absolute bottom-full right-0 mb-1 bg-white rounded-2xl shadow-elevated border border-gray-200 py-1 z-20 min-w-[120px]"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
@@ -198,21 +198,21 @@ export default function EnvManager() {
                       </div>
                       <button
                         onClick={() => ctx.setViewDialog(item)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-2xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                         title="查看"
                       >
                         <Eye size={15} />
                       </button>
                       <button
                         onClick={() => ctx.openEdit(item)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-primary/70 hover:text-primary hover:bg-primary-light transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-2xl text-primary/70 hover:text-primary hover:bg-primary-light transition-colors"
                         title="编辑"
                       >
                         <Pencil size={15} />
                       </button>
                       <button
                         onClick={() => ctx.setDeleteDialog(item)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-2xl text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="删除"
                       >
                         <Trash2 size={15} />
@@ -223,7 +223,7 @@ export default function EnvManager() {
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-2">
-                <div className="w-12 h-12 rounded-xl bg-primary-light border border-gray-200 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-primary-light border border-gray-200 flex items-center justify-center">
                   <FileText size={18} className="text-primary/50" />
                 </div>
                 <p className="text-xs text-gray-400">
@@ -259,7 +259,7 @@ export default function EnvManager() {
                 return (
                   <div
                     key={g.id}
-                    className={`rounded-xl border transition-all duration-200 ${isExpanded ? 'shadow-elevated' : ''}`}
+                    className={`rounded-2xl border transition-all duration-200 ${isExpanded ? 'shadow-elevated' : ''}`}
                     style={{
                       background: COLOR_BG[g.color] || 'rgba(0,0,0,0.04)',
                       borderColor: isExpanded ? color : 'transparent',
@@ -277,7 +277,7 @@ export default function EnvManager() {
                         {g.name}
                       </span>
                       <span
-                        className="text-[10px] text-gray-400 tabular-nums px-1.5 py-0.5 rounded-full"
+                        className="text-2xs text-gray-400 tabular-nums px-1.5 py-0.5 rounded-full"
                         style={{ background: `${color}18` }}
                       >
                         {count}
@@ -310,7 +310,7 @@ export default function EnvManager() {
                         <div className="flex items-center gap-1.5 mb-2">
                           <button
                             onClick={() => ctx.handleBackupGroup(g.id)}
-                            className="flex items-center gap-1 text-[10px] px-2 py-1 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors font-medium"
+                            className="flex items-center gap-1 text-2xs px-2 py-1 bg-primary/10 text-primary rounded-2xl hover:bg-primary/20 transition-colors font-medium"
                           >
                             <Save size={11} />
                             备份
@@ -318,7 +318,7 @@ export default function EnvManager() {
                           <button
                             onClick={() => ctx.handleRestoreGroup(g.id)}
                             disabled={count === 0}
-                            className="flex items-center gap-1 text-[10px] px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 disabled:opacity-30 transition-colors font-medium"
+                            className="flex items-center gap-1 text-2xs px-2 py-1 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-100 disabled:opacity-30 transition-colors font-medium"
                           >
                             <RotateCcw size={11} />
                             恢复全部
@@ -326,7 +326,7 @@ export default function EnvManager() {
                         </div>
                         {(ctx.groupEntries[g.id] || []).length === 0 ? (
                           <div
-                            className="text-[10px] text-gray-400 text-center py-3 rounded-lg border border-dashed"
+                            className="text-2xs text-gray-400 text-center py-3 rounded-2xl border border-dashed"
                             style={{ borderColor: `${color}30`, background: `${color}08` }}
                           >
                             暂无变量
@@ -336,7 +336,7 @@ export default function EnvManager() {
                             {(ctx.groupEntries[g.id] || []).map((v) => (
                               <div
                                 key={v.key}
-                                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg group/v hover:brightness-95 transition-all"
+                                className="flex items-center gap-1.5 text-2xs px-2.5 py-1.5 rounded-2xl group/v hover:brightness-95 transition-all"
                                 style={{ background: `${color}12` }}
                               >
                                 <span
@@ -374,8 +374,8 @@ export default function EnvManager() {
                 )
               })
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2 py-12 bg-gray-50/50 rounded-xl">
-                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 py-12 bg-gray-50/50 rounded-2xl">
+                <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center">
                   <Plus size={16} className="text-gray-400" />
                 </div>
                 <p className="text-xs text-gray-400">暂无分组</p>

@@ -50,9 +50,9 @@ export default function HealthCard({
 
   if (!hasScanned && !scanning) {
     return (
-      <div className="bg-gradient-to-br from-primary/10 via-purple-50 to-blue-50 rounded-2xl p-8 border border-primary/20">
+      <div className="bg-gradient-to-br from-primary/10 via-purple-50 to-blue-50 rounded-3xl p-8 border border-primary/20">
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
+          <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center shadow-sm shrink-0">
             <Sparkles size={36} className="text-primary" />
           </div>
           <div className="flex-1 min-w-0">
@@ -62,7 +62,7 @@ export default function HealthCard({
             </p>
             <button
               onClick={onScan}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-hover shadow-md hover:shadow-lg transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-2xl text-sm font-medium hover:bg-primary-hover shadow-md hover:shadow-lg transition-all"
             >
               <Scan size={16} />
               开始扫描磁盘
@@ -75,9 +75,9 @@ export default function HealthCard({
 
   if (scanning) {
     return (
-      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-card">
+      <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-card">
         <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-primary-light flex items-center justify-center shrink-0">
+          <div className="w-16 h-16 rounded-3xl bg-primary-light flex items-center justify-center shrink-0">
             <RefreshCw size={28} className="text-primary animate-spin" />
           </div>
           <div className="flex-1 min-w-0">
@@ -85,7 +85,7 @@ export default function HealthCard({
               {scanPlan ? 'AI 正在引导扫描' : '正在扫描磁盘…'}
             </h2>
             {scanPlan && (
-              <p className="text-sm text-purple-700 bg-purple-50 rounded-lg px-3 py-2 mb-2 leading-relaxed">
+              <p className="text-sm text-purple-700 bg-purple-50 rounded-2xl px-3 py-2 mb-2 leading-relaxed">
                 {scanPlan.intro}
               </p>
             )}
@@ -116,7 +116,7 @@ export default function HealthCard({
           </div>
           <button
             onClick={onCancelScan}
-            className="flex items-center gap-1 px-3 py-2 bg-amber-50 text-amber-600 rounded-lg text-xs hover:bg-amber-100 transition-colors shrink-0"
+            className="flex items-center gap-1 px-3 py-2 bg-amber-50 text-amber-600 rounded-2xl text-xs hover:bg-amber-100 transition-colors shrink-0"
           >
             <X size={14} />
             停止
@@ -127,7 +127,7 @@ export default function HealthCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-card">
+    <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-card">
       <div className="flex items-center gap-6">
         {/* Score ring */}
         <div className="relative w-32 h-32 shrink-0">
@@ -147,7 +147,7 @@ export default function HealthCard({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className={`text-3xl font-bold ${colors.text}`}>{score}</div>
-            <div className={`text-[10px] font-medium ${colors.text}`}>{colors.label}</div>
+            <div className={`text-2xs font-medium ${colors.text}`}>{colors.label}</div>
           </div>
         </div>
 
@@ -162,11 +162,11 @@ export default function HealthCard({
           <p className="text-sm text-gray-600 mb-3 leading-relaxed">{summary}</p>
 
           <div className="flex items-center gap-4 text-xs">
-            <div className={`px-2.5 py-1 rounded-lg ${colors.bg}`}>
+            <div className={`px-2.5 py-1 rounded-2xl ${colors.bg}`}>
               <span className="text-gray-500">可释放</span>
               <span className={`ml-1.5 font-bold ${colors.text}`}>{formatSize(totalReclaimable)}</span>
             </div>
-            <div className="px-2.5 py-1 rounded-lg bg-gray-100">
+            <div className="px-2.5 py-1 rounded-2xl bg-gray-100">
               <span className="text-gray-500">类别</span>
               <span className="ml-1.5 font-bold text-gray-700">{categoryCount}</span>
             </div>

@@ -1,7 +1,10 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI } from '../shared/types'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { ElectronAPI, FileInfo, ProcessInfo, CleanupScanResult, LargeFile } from '../shared/types'
 
 const api: ElectronAPI = {
+  fileViewer: {
+    allowFile: (absPath) => ipcRenderer.invoke('file:allow', absPath),
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     save: (s) => ipcRenderer.invoke('settings:save', s),
@@ -11,7 +14,7 @@ const api: ElectronAPI = {
     cancel: () => ipcRenderer.invoke('file:searchCancel'),
     getDrives: () => ipcRenderer.invoke('file:drives'),
     onFound: (cb) => {
-      const listener = (_event: any, files: any) => cb(files)
+      const listener = (_event: IpcRendererEvent, files: FileInfo[]) => cb(files)
       ipcRenderer.on('file:found', listener)
       return () => ipcRenderer.removeListener('file:found', listener)
     },
@@ -43,17 +46,17 @@ const api: ElectronAPI = {
     disableAutostart: (entryType, entryName) =>
       ipcRenderer.invoke('process:disableAutostart', entryType, entryName),
     onBatch: (cb) => {
-      const listener = (_event: any, version: any, procs: any) => cb(version, procs)
+      const listener = (_event: IpcRendererEvent, version: number, procs: ProcessInfo[]) => cb(version, procs)
       ipcRenderer.on('process:batch', listener)
       return () => ipcRenderer.removeListener('process:batch', listener)
     },
     onComplete: (cb) => {
-      const listener = (_event: any, version: any) => cb(version)
+      const listener = (_event: IpcRendererEvent, version: number) => cb(version)
       ipcRenderer.on('process:complete', listener)
       return () => ipcRenderer.removeListener('process:complete', listener)
     },
     onError: (cb) => {
-      const listener = (_event: any, version: any, errorMsg: any) => cb(version, errorMsg)
+      const listener = (_event: IpcRendererEvent, version: number, errorMsg: string) => cb(version, errorMsg)
       ipcRenderer.on('process:error', listener)
       return () => ipcRenderer.removeListener('process:error', listener)
     },
@@ -100,17 +103,17 @@ const api: ElectronAPI = {
     cancelLargeFileScan: () => ipcRenderer.invoke('cleaner:cancelLargeFileScan'),
     trashFile: (filePath) => ipcRenderer.invoke('cleaner:trashFile', filePath),
     onScanProgress: (cb) => {
-      const listener = (_event: any, result: any) => cb(result)
+      const listener = (_event: IpcRendererEvent, result: CleanupScanResult) => cb(result)
       ipcRenderer.on('cleaner:scanProgress', listener)
       return () => ipcRenderer.removeListener('cleaner:scanProgress', listener)
     },
     onScanComplete: (cb) => {
-      const listener = (_event: any, results: any) => cb(results)
+      const listener = (_event: IpcRendererEvent, results: CleanupScanResult[]) => cb(results)
       ipcRenderer.on('cleaner:scanComplete', listener)
       return () => ipcRenderer.removeListener('cleaner:scanComplete', listener)
     },
     onLargeFileFound: (cb) => {
-      const listener = (_event: any, files: any) => cb(files)
+      const listener = (_event: IpcRendererEvent, files: LargeFile[]) => cb(files)
       ipcRenderer.on('cleaner:largeFileFound', listener)
       return () => ipcRenderer.removeListener('cleaner:largeFileFound', listener)
     },

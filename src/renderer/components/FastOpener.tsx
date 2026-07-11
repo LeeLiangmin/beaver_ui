@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   LayoutGrid,
   Inbox,
+  Eye,
 } from 'lucide-react'
 import type { OpenerGroup, OpenerItem } from '../../shared/types'
 
@@ -28,6 +29,9 @@ const COLORS: Record<string, string> = {
   orange: '#FFAB91',
 }
 
+import FilePreviewModal from './FilePreviewModal'
+import Modal from './Modal'
+
 export default function FastOpener() {
   const [groups, setGroups] = useState<OpenerGroup[]>([])
   const [items, setItems] = useState<OpenerItem[]>([])
@@ -37,6 +41,7 @@ export default function FastOpener() {
   const [invalidPaths, setInvalidPaths] = useState<Set<string>>(new Set())
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [moveMenuId, setMoveMenuId] = useState<string | null>(null)
+  const [previewPath, setPreviewPath] = useState<string | null>(null)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [editingGroup, setEditingGroup] = useState<OpenerGroup | null>(null)
   const [groupForm, setGroupForm] = useState({ name: '', color: 'blue' })
@@ -226,14 +231,14 @@ export default function FastOpener() {
               e.stopPropagation()
               setShowAddMenu(!showAddMenu)
             }}
-            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover transition-colors shadow-sm"
+            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-2xl text-sm hover:bg-primary-hover transition-colors shadow-sm"
           >
             <Plus size={13} />
             添加
             <ChevronDown size={15} />
           </button>
           {showAddMenu && (
-            <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-elevated border border-gray-200 py-1 z-30 min-w-[120px]">
+            <div className="absolute top-full left-0 mt-1 bg-white rounded-2xl shadow-elevated border border-gray-200 py-1 z-30 min-w-[120px]">
               <button
                 onClick={addFile}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-primary-light hover:text-primary transition-colors"
@@ -259,13 +264,13 @@ export default function FastOpener() {
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
             placeholder="搜索名称或路径…"
-            className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+            className="w-full border border-gray-300 rounded-2xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
           />
         </div>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as any)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary"
+          className="border border-gray-300 rounded-2xl px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary"
         >
           <option value="sortOrder">默认排序</option>
           <option value="name">按名称</option>
@@ -275,7 +280,7 @@ export default function FastOpener() {
       </div>
 
       <div className="flex flex-1 overflow-hidden gap-3">
-        <aside className="w-40 shrink-0 bg-white rounded-lg border border-gray-200 shadow-card flex flex-col">
+        <aside className="w-40 shrink-0 bg-white rounded-2xl border border-gray-200 shadow-card flex flex-col">
           <div className="flex-1 overflow-y-auto py-1">
             <button
               onClick={() => setActiveGroupId(null)}
@@ -337,7 +342,7 @@ export default function FastOpener() {
                 setGroupForm({ name: '', color: 'blue' })
                 setShowGroupModal(true)
               }}
-              className="w-full flex items-center justify-center gap-1 py-2 text-xs text-gray-400 border border-dashed border-gray-200 hover:border-primary/40 hover:text-primary rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-1 py-2 text-xs text-gray-400 border border-dashed border-gray-200 hover:border-primary/40 hover:text-primary rounded-2xl transition-colors"
             >
               <Plus size={15} />
               新建分组
@@ -359,7 +364,7 @@ export default function FastOpener() {
                   onDragStart={() => handleDragStart(item.id)}
                   onDragOver={handleDragOver}
                   onDrop={() => handleDrop(item.id)}
-                  className={`relative bg-white rounded-lg border p-3 transition-all cursor-pointer group/card shadow-card ${
+                  className={`relative bg-white rounded-2xl border p-3 transition-all cursor-pointer group/card shadow-card ${
                     dragId === item.id
                       ? 'opacity-50 border-dashed border-primary'
                       : 'border-gray-200 hover:border-primary/40 hover:shadow-elevated'
@@ -373,7 +378,7 @@ export default function FastOpener() {
                   )}
                   <div className="flex items-start gap-3">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.isDir ? 'bg-amber-50 text-amber-500 border-amber-200' : 'bg-primary-light text-primary border-primary/20'}`}
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${item.isDir ? 'bg-amber-50 text-amber-500 border-amber-200' : 'bg-primary-light text-primary border-primary/20'}`}
                     >
                       {item.isDir ? <Folder size={16} /> : <File size={16} />}
                     </div>
@@ -425,6 +430,18 @@ export default function FastOpener() {
                       <ExternalLink size={14} />
                       打开
                     </button>
+                    {!item.isDir && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPreviewPath(item.path)
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-indigo-600 bg-indigo-50 rounded hover:bg-indigo-100 transition-colors"
+                      >
+                        <Eye size={14} />
+                        预览
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -448,7 +465,7 @@ export default function FastOpener() {
                           移动
                         </button>
                         {moveMenuId === item.id && (
-                          <div className="absolute bottom-full left-0 mb-1 bg-white rounded-xl shadow-elevated border border-gray-200 py-1 z-20 min-w-[120px]">
+                          <div className="absolute bottom-full left-0 mb-1 bg-white rounded-2xl shadow-elevated border border-gray-200 py-1 z-20 min-w-[120px]">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -494,7 +511,7 @@ export default function FastOpener() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-2">
-              <div className="w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center bg-primary-light">
+              <div className="w-12 h-12 rounded-2xl border border-gray-200 flex items-center justify-center bg-primary-light">
                 <Zap size={18} className="text-primary/50" />
               </div>
               <p className="text-xs text-gray-400">
@@ -505,62 +522,55 @@ export default function FastOpener() {
         </div>
       </div>
 
-      {showGroupModal && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => setShowGroupModal(false)}
-        >
-          <div
-            className="bg-white rounded-2xl w-80 p-5 shadow-modal animate-modal-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">
-              {editingGroup ? '编辑分组' : '新建分组'}
-            </h3>
-            <div className="mb-3">
-              <label className="block text-xs text-gray-400 mb-1">分组名称</label>
-              <input
-                type="text"
-                value={groupForm.name}
-                onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && saveGroup()}
-                placeholder="输入分组名称"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
-                autoFocus
+      {previewPath && (
+        <FilePreviewModal filePath={previewPath} onClose={() => setPreviewPath(null)} />
+      )}
+      <Modal open={showGroupModal} onClose={() => setShowGroupModal(false)} width="w-80 p-5">
+        <h3 className="text-sm font-semibold text-gray-700 mb-4">
+          {editingGroup ? '编辑分组' : '新建分组'}
+        </h3>
+        <div className="mb-3">
+          <label className="block text-xs text-gray-400 mb-1">分组名称</label>
+          <input
+            type="text"
+            value={groupForm.name}
+            onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && saveGroup()}
+            placeholder="输入分组名称"
+            className="w-full border border-gray-300 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+            autoFocus
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-xs text-gray-400 mb-1.5">分组颜色</label>
+          <div className="flex gap-2 flex-wrap">
+            {Object.entries(COLORS).map(([name, hex]) => (
+              <button
+                key={name}
+                onClick={() => setGroupForm((f) => ({ ...f, color: name }))}
+                className={`w-6 h-6 rounded-2xl transition-all ${groupForm.color === name ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-105'}`}
+                style={{ background: hex }}
+                title={name}
               />
-            </div>
-            <div className="mb-4">
-              <label className="block text-xs text-gray-400 mb-1.5">分组颜色</label>
-              <div className="flex gap-2 flex-wrap">
-                {Object.entries(COLORS).map(([name, hex]) => (
-                  <button
-                    key={name}
-                    onClick={() => setGroupForm((f) => ({ ...f, color: name }))}
-                    className={`w-6 h-6 rounded-lg transition-all ${groupForm.color === name ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-105'}`}
-                    style={{ background: hex }}
-                    title={name}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowGroupModal(false)}
-                className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={saveGroup}
-                disabled={!groupForm.name.trim()}
-                className="px-5 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-30 transition-colors shadow-sm"
-              >
-                {editingGroup ? '保存' : '创建'}
-              </button>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => setShowGroupModal(false)}
+            className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={saveGroup}
+            disabled={!groupForm.name.trim()}
+            className="px-5 py-2 text-sm bg-primary text-white rounded-2xl hover:bg-primary-hover disabled:opacity-30 transition-colors shadow-sm"
+          >
+            {editingGroup ? '保存' : '创建'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

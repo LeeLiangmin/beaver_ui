@@ -33,12 +33,12 @@ export default function ChatSidebar({ open, messages, input, loading, onClose, o
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 shrink-0 bg-gradient-to-r from-purple-50 to-blue-50">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm">
+          <div className="w-7 h-7 rounded-2xl bg-white flex items-center justify-center shadow-sm">
             <Sparkles size={14} className="text-purple-600" />
           </div>
           <div>
             <div className="text-sm font-semibold text-gray-700">Beaver 助手</div>
-            <div className="text-[10px] text-gray-500">AI 清理顾问</div>
+            <div className="text-2xs text-gray-500">AI 清理顾问</div>
           </div>
         </div>
         <button
@@ -53,7 +53,7 @@ export default function ChatSidebar({ open, messages, input, loading, onClose, o
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-8">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-3xl bg-purple-50 flex items-center justify-center">
               <MessageCircle size={24} className="text-purple-500" />
             </div>
             <div>
@@ -67,7 +67,7 @@ export default function ChatSidebar({ open, messages, input, loading, onClose, o
                   onClick={() => {
                     onInputChange(s)
                   }}
-                  className="text-xs text-left px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50 transition-all"
+                  className="text-xs text-left px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-600 hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50/50 transition-all"
                 >
                   {s}
                 </button>
@@ -78,7 +78,7 @@ export default function ChatSidebar({ open, messages, input, loading, onClose, o
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[85%] px-3 py-2 rounded-xl text-xs whitespace-pre-wrap ${
+              className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs whitespace-pre-wrap ${
                 m.role === 'user'
                   ? 'bg-primary text-white rounded-br-sm'
                   : m.role === 'system'
@@ -92,7 +92,7 @@ export default function ChatSidebar({ open, messages, input, loading, onClose, o
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-xl rounded-bl-sm px-3 py-2">
+            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-3 py-2">
               <Loader2 size={14} className="text-gray-400 animate-spin" />
             </div>
           </div>
@@ -109,12 +109,12 @@ export default function ChatSidebar({ open, messages, input, loading, onClose, o
           onKeyDown={(e) => e.key === 'Enter' && !loading && onSend()}
           placeholder="问我任何清理相关的问题…"
           disabled={loading}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary disabled:opacity-40 transition-colors bg-white"
+          className="flex-1 border border-gray-300 rounded-2xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary disabled:opacity-40 transition-colors bg-white"
         />
         <button
           onClick={onSend}
           disabled={loading || !input.trim()}
-          className="p-1.5 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-30 transition-colors"
+          className="p-1.5 rounded-2xl bg-primary text-white hover:bg-primary-hover disabled:opacity-30 transition-colors"
         >
           <Send size={14} />
         </button>

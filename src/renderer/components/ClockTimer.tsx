@@ -108,7 +108,7 @@ export default function ClockTimer() {
     <div className="flex flex-col h-full">
       <h2 className="text-xl font-semibold mb-6 text-gray-800">时钟计时</h2>
       <div className="grid grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-card p-6">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-6">
           <div className="flex items-center gap-2 text-gray-500 mb-4">
             <Clock size={20} />
             <span className="text-sm font-medium">当前时间</span>
@@ -120,7 +120,7 @@ export default function ClockTimer() {
           <div className="mt-3 text-xs text-gray-400">时区: {timezone || '--'}</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-card p-6">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-6">
           <div className="flex items-center gap-2 text-gray-500 mb-4">
             <Timer size={20} />
             <span className="text-sm font-medium">倒计时</span>
@@ -137,12 +137,12 @@ export default function ClockTimer() {
               defaultValue="60"
               placeholder="秒"
               disabled={cdRunning}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+              className="border border-gray-300 rounded-2xl px-3 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
               onKeyDown={(e) => e.key === 'Enter' && cdStart()}
             />
             <button
               onClick={cdRunning ? () => setCdRunning(false) : cdStart}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-white transition-colors shadow-sm ${cdRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-primary-hover'}`}
+              className={`flex items-center gap-1 px-3 py-2 rounded-2xl text-sm text-white transition-colors shadow-sm ${cdRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-primary-hover'}`}
             >
               {cdRunning ? <Pause size={14} /> : <Play size={14} />}
               {cdRunning ? '暂停' : '开始'}
@@ -152,7 +152,7 @@ export default function ClockTimer() {
                 setCdRunning(false)
                 setCdSecs(0)
               }}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1 px-3 py-2 rounded-2xl text-sm text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <RotateCcw size={14} />
               重置
@@ -160,7 +160,7 @@ export default function ClockTimer() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-card p-6 flex flex-col">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-card p-6 flex flex-col">
           <div className="flex items-center gap-2 text-gray-500 mb-4">
             <TimerReset size={20} />
             <span className="text-sm font-medium">秒表</span>
@@ -173,7 +173,7 @@ export default function ClockTimer() {
           <div className="flex items-center gap-2 mb-2">
             <button
               onClick={swToggle}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-white transition-colors shadow-sm ${swRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+              className={`flex items-center gap-1 px-3 py-2 rounded-2xl text-sm text-white transition-colors shadow-sm ${swRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
             >
               {swRunning ? <Pause size={14} /> : <Play size={14} />}
               {swRunning ? '暂停' : '开始'}
@@ -181,14 +181,14 @@ export default function ClockTimer() {
             <button
               onClick={swLap}
               disabled={!swRunning}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-30 transition-colors"
+              className="flex items-center gap-1 px-3 py-2 rounded-2xl text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-30 transition-colors"
             >
               <Flag size={14} />
               计次
             </button>
             <button
               onClick={swReset}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1 px-3 py-2 rounded-2xl text-sm text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <RotateCcw size={14} />
               重置

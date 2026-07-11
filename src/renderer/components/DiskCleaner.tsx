@@ -14,6 +14,7 @@ import InsightCards from './InsightCards'
 import RuleList from './RuleList'
 import LargeFileFinder from './LargeFileFinder'
 import ChatSidebar from './ChatSidebar'
+import Modal from './Modal'
 
 export default function DiskCleaner() {
   const ctx = useDiskCleaner()
@@ -21,14 +22,17 @@ export default function DiskCleaner() {
   const categoryCount = ctx.availableResults.length
 
   const handleApplyCard = (ruleIds: string[]) => {
+    if (!Array.isArray(ruleIds)) return
     ctx.applyAiSelection(ruleIds)
   }
 
   const handleQuickAction = (ruleIds: string[]) => {
+    if (!Array.isArray(ruleIds)) return
     ctx.runPreset(ruleIds)
   }
 
   const handleToggleCategory = (ids: string[], allSelected: boolean) => {
+    if (!Array.isArray(ids) || ids.length === 0) return
     if (allSelected) {
       ctx.setSelectedIds((prev) => {
         const next = new Set(prev)
@@ -50,7 +54,7 @@ export default function DiskCleaner() {
       <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         {/* Tab bar */}
         <div className="flex items-center gap-1 mb-4 shrink-0">
-          <div className="flex bg-gray-100 rounded-xl p-1 gap-0.5">
+          <div className="flex bg-gray-100 rounded-2xl p-1 gap-0.5">
             <TabButton active={ctx.tab === 'dashboard'} onClick={() => ctx.setTab('dashboard')} icon={<LayoutDashboard size={13} />} label="总览" />
             <TabButton active={ctx.tab === 'rules'} onClick={() => ctx.setTab('rules')} icon={<ListChecks size={13} />} label="详细清理" />
             <TabButton active={ctx.tab === 'largefiles'} onClick={() => ctx.setTab('largefiles')} icon={<FileSearch size={13} />} label="大文件查找" />
@@ -59,7 +63,7 @@ export default function DiskCleaner() {
           {ctx.aiEnabled && !ctx.chatOpen && (
             <button
               onClick={() => ctx.setChatOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
             >
               <MessageCircle size={13} />
               打开 AI 助手
@@ -138,23 +142,23 @@ export default function DiskCleaner() {
               onCancelScan={ctx.handleCancelLargeScan}
               onBrowse={ctx.handleBrowseForLarge}
               onLocate={ctx.handleLocateFile}
-              onRefreshFiles={ctx.handleLargeScan}
+              onRemoveFiles={ctx.handleRemoveLargeFiles}
             />
           )}
         </div>
 
         {/* Bottom action bar (shown when items selected) */}
         {ctx.selectedIds.size > 0 && ctx.tab !== 'largefiles' && (
-          <div className="mt-3 shrink-0 bg-white rounded-xl border border-primary/30 shadow-elevated p-3 flex items-center gap-3">
+          <div className="mt-3 shrink-0 bg-white rounded-2xl border border-primary/30 shadow-elevated p-3 flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center">
+              <div className="w-8 h-8 rounded-2xl bg-primary-light flex items-center justify-center">
                 <Sparkles size={14} className="text-primary" />
               </div>
               <div>
                 <div className="text-sm font-semibold text-gray-800">
                   已选 {ctx.selectedIds.size} 项 · {formatSize(ctx.selectedBytes)}
                 </div>
-                <div className="text-[10px] text-gray-500">{ctx.selectedCount.toLocaleString()} 个文件</div>
+                <div className="text-2xs text-gray-500">{ctx.selectedCount.toLocaleString()} 个文件</div>
               </div>
             </div>
             <div className="flex-1" />
@@ -172,7 +176,7 @@ export default function DiskCleaner() {
             <button
               onClick={() => ctx.setCleanDialog(true)}
               disabled={ctx.cleaning}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium shadow-sm transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-medium shadow-sm transition-colors ${
                 ctx.permanent ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-primary text-white hover:bg-primary-hover'
               } disabled:opacity-40`}
             >
@@ -183,7 +187,7 @@ export default function DiskCleaner() {
         )}
 
         {ctx.permanent && ctx.selectedIds.size > 0 && (
-          <div className="mt-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 flex items-center gap-1.5">
+          <div className="mt-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-600 flex items-center gap-1.5">
             <ShieldAlert size={12} />
             彻底删除模式：文件将永久删除，不可恢复
           </div>
@@ -201,54 +205,43 @@ export default function DiskCleaner() {
         onSend={ctx.sendChat}
       />
 
-      {/* Clean confirmation dialog */}
-      {ctx.cleanDialog && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => ctx.setCleanDialog(false)}
-        >
+      <Modal open={ctx.cleanDialog} onClose={() => ctx.setCleanDialog(false)} width="w-[28rem] p-6">
+        <div className="flex items-start gap-4 mb-4">
           <div
-            className="bg-white rounded-2xl p-6 w-[28rem] shadow-modal animate-modal-in"
-            onClick={(e) => e.stopPropagation()}
+            className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              ctx.permanent ? 'bg-red-50' : 'bg-amber-50'
+            }`}
           >
-            <div className="flex items-start gap-4 mb-4">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                  ctx.permanent ? 'bg-red-50' : 'bg-amber-50'
-                }`}
-              >
-                <AlertTriangle size={18} className={ctx.permanent ? 'text-red-500' : 'text-amber-500'} />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">
-                  {ctx.permanent ? '确认彻底删除' : '确认清理'}
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  {ctx.permanent
-                    ? `将永久删除 ${ctx.selectedIds.size} 个类别共 ${ctx.selectedCount.toLocaleString()} 个文件（${formatSize(ctx.selectedBytes)}），不可恢复。`
-                    : `将 ${ctx.selectedIds.size} 个类别共 ${ctx.selectedCount.toLocaleString()} 个文件（${formatSize(ctx.selectedBytes)}）移至回收站。`}
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => ctx.setCleanDialog(false)}
-                className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={ctx.handleClean}
-                className={`px-4 py-2 text-sm text-white rounded-lg shadow-sm transition-colors ${
-                  ctx.permanent ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary-hover'
-                }`}
-              >
-                {ctx.permanent ? '确认彻底删除' : '确认清理'}
-              </button>
-            </div>
+            <AlertTriangle size={18} className={ctx.permanent ? 'text-red-500' : 'text-amber-500'} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700">
+              {ctx.permanent ? '确认彻底删除' : '确认清理'}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              {ctx.permanent
+                ? `将永久删除 ${ctx.selectedIds.size} 个类别共 ${ctx.selectedCount.toLocaleString()} 个文件（${formatSize(ctx.selectedBytes)}），不可恢复。`
+                : `将 ${ctx.selectedIds.size} 个类别共 ${ctx.selectedCount.toLocaleString()} 个文件（${formatSize(ctx.selectedBytes)}）移至回收站。`}
+            </p>
           </div>
         </div>
-      )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => ctx.setCleanDialog(false)}
+            className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={ctx.handleClean}
+            className={`px-4 py-2 text-sm text-white rounded-2xl shadow-sm transition-colors ${
+              ctx.permanent ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary-hover'
+            }`}
+          >
+            {ctx.permanent ? '确认彻底删除' : '确认清理'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -267,7 +260,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-medium transition-colors ${
         active ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
       }`}
     >

@@ -15,6 +15,7 @@ import type { ProcessInfo, AutoStartEntry } from '../../shared/types'
 import VirtualList from './VirtualList'
 import ProgressBar from './ProgressBar'
 import { useToast } from './Toast'
+import Modal from './Modal'
 
 function formatMem(mb: number): string {
   if (mb < 1024) return mb.toFixed(1) + ' MB'
@@ -212,7 +213,7 @@ export default function ProcessManager() {
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             placeholder="搜索进程名称、PID 或端口…"
-            className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+            className="w-full border border-gray-300 rounded-2xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
           />
         </div>
         <div className="flex items-center gap-2 ml-auto">
@@ -230,14 +231,14 @@ export default function ProcessManager() {
           <button
             onClick={refresh}
             disabled={loading}
-            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-xs hover:bg-primary-hover disabled:opacity-50 shadow-sm transition-colors"
+            className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-2xl text-xs hover:bg-primary-hover disabled:opacity-50 shadow-sm transition-colors"
           >
             {loading ? <RefreshCw size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             刷新
           </button>
           <button
             onClick={toggleAutoRefresh}
-            className={`flex items-center gap-1 px-3 py-2 rounded-lg text-xs border transition-colors ${autoRefresh ? 'bg-emerald-50 text-emerald-600 border-emerald-300' : 'text-gray-500 border-gray-300 hover:bg-gray-50'}`}
+            className={`flex items-center gap-1 px-3 py-2 rounded-2xl text-xs border transition-colors ${autoRefresh ? 'bg-emerald-50 text-emerald-600 border-emerald-300' : 'text-gray-500 border-gray-300 hover:bg-gray-50'}`}
           >
             <Timer size={15} />
             {autoRefresh ? '停止' : '自动'}
@@ -247,14 +248,14 @@ export default function ProcessManager() {
 
       <div className="flex-1 min-h-0">
         {loading && filtered.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-card h-full flex items-center justify-center">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-card h-full flex items-center justify-center">
             <ProgressBar label="加载进程列表..." />
           </div>
         ) : filtered.length > 0 ? (
           <VirtualList
             items={filtered}
-            rowHeight={36}
-            className="bg-white rounded-lg border border-gray-200 shadow-card h-full"
+            rowHeight={44}
+            className="bg-white rounded-2xl border border-gray-200 shadow-card h-full"
             header={
               <div className="flex bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500">
                 {cols.map((col) => (
@@ -279,7 +280,7 @@ export default function ProcessManager() {
               </div>
             }
             renderRow={(p) => (
-              <div className="flex items-center h-9 border-b border-gray-100 hover:bg-primary-light/30 group text-sm transition-colors">
+              <div className="flex items-center h-11 border-b border-gray-100 hover:bg-primary-light/30 group text-sm transition-colors">
                 <div className="w-14 shrink-0 px-3 font-mono text-xs text-gray-500">{p.pid}</div>
                 <div className="flex-1 min-w-0 px-3">
                   <div className="font-medium text-gray-700 truncate">{p.name}</div>
@@ -357,8 +358,8 @@ export default function ProcessManager() {
             )}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-32 gap-2 bg-white rounded-lg border border-gray-200 shadow-card">
-            <div className="w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center bg-primary-light">
+          <div className="flex flex-col items-center justify-center h-32 gap-2 bg-white rounded-2xl border border-gray-200 shadow-card">
+            <div className="w-12 h-12 rounded-2xl border border-gray-200 flex items-center justify-center bg-primary-light">
               <Cpu size={18} className="text-primary/50" />
             </div>
             <p className={`text-xs ${errorMsg ? 'text-danger' : 'text-gray-400'}`}>
@@ -372,136 +373,118 @@ export default function ProcessManager() {
         )}
       </div>
 
-      {killDialog.visible && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => setKillDialog({ visible: false, proc: null })}
-        >
-          <div
-            className="bg-white rounded-2xl p-5 w-[22rem] shadow-modal animate-modal-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-danger-light border border-danger/30 flex items-center justify-center shrink-0">
-                <AlertTriangle size={14} className="text-danger" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">确认结束进程</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  确定要结束进程 &quot;{killDialog.proc?.name}&quot; (PID: {killDialog.proc?.pid})
-                  吗？
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setKillDialog({ visible: false, proc: null })}
-                className="px-5 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => doKill(killDialog.proc!.pid)}
-                className="px-5 py-2 text-sm text-white bg-danger rounded-lg hover:bg-danger-hover transition-colors shadow-sm"
-              >
-                确认结束
-              </button>
-            </div>
+      <Modal
+        open={killDialog.visible}
+        onClose={() => setKillDialog({ visible: false, proc: null })}
+        width="w-[22rem] p-5"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-2xl bg-danger-light border border-danger/30 flex items-center justify-center shrink-0">
+            <AlertTriangle size={14} className="text-danger" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700">确认结束进程</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              确定要结束进程 &quot;{killDialog.proc?.name}&quot; (PID: {killDialog.proc?.pid})
+              吗？
+            </p>
           </div>
         </div>
-      )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => setKillDialog({ visible: false, proc: null })}
+            className="px-5 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={() => doKill(killDialog.proc!.pid)}
+            className="px-5 py-2 text-sm text-white bg-danger rounded-2xl hover:bg-danger-hover transition-colors shadow-sm"
+          >
+            确认结束
+          </button>
+        </div>
+      </Modal>
 
-      {restartDialog.visible && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => setRestartDialog({ visible: false, proc: null })}
-        >
-          <div
-            className="bg-white rounded-2xl p-5 w-[22rem] shadow-modal animate-modal-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-warning-light border border-warning/30 flex items-center justify-center shrink-0">
-                <RefreshCw size={14} className="text-warning" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">确认重启进程</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  确定要重启进程 &quot;{restartDialog.proc?.name}&quot; (PID:{' '}
-                  {restartDialog.proc?.pid}) 吗？
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setRestartDialog({ visible: false, proc: null })}
-                className="px-5 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => doRestart(restartDialog.proc!.pid, restartDialog.proc!.exePath)}
-                className="px-5 py-2 text-sm text-white bg-warning rounded-lg hover:bg-warning-hover transition-colors shadow-sm"
-              >
-                确认重启
-              </button>
-            </div>
+      <Modal
+        open={restartDialog.visible}
+        onClose={() => setRestartDialog({ visible: false, proc: null })}
+        width="w-[22rem] p-5"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-2xl bg-warning-light border border-warning/30 flex items-center justify-center shrink-0">
+            <RefreshCw size={14} className="text-warning" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700">确认重启进程</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              确定要重启进程 &quot;{restartDialog.proc?.name}&quot; (PID:{' '}
+              {restartDialog.proc?.pid}) 吗？
+            </p>
           </div>
         </div>
-      )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => setRestartDialog({ visible: false, proc: null })}
+            className="px-5 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            取消
+          </button>
+          <button
+            onClick={() => doRestart(restartDialog.proc!.pid, restartDialog.proc!.exePath)}
+            className="px-5 py-2 text-sm text-white bg-warning rounded-2xl hover:bg-warning-hover transition-colors shadow-sm"
+          >
+            确认重启
+          </button>
+        </div>
+      </Modal>
 
-      {autostartDialog.visible && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => setAutostartDialog({ visible: false, entries: null, procName: '' })}
-        >
-          <div
-            className="bg-white rounded-2xl p-5 w-[28rem] shadow-modal animate-modal-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-warning-light border border-warning/30 flex items-center justify-center shrink-0">
-                <ShieldOff size={14} className="text-warning" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-gray-700">禁止自启动</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  {autostartDialog.entries?.length
-                    ? `发现进程 "${autostartDialog.procName}" 的 ${autostartDialog.entries.length} 个自启动项`
-                    : `未发现进程 "${autostartDialog.procName}" 的自启动配置。`}
-                </p>
-                {autostartDialog.entries && autostartDialog.entries.length > 0 && (
-                  <ul className="mt-3 space-y-1.5 max-h-40 overflow-y-auto">
-                    {autostartDialog.entries.map((e, i) => (
-                      <li key={i} className="text-xs bg-gray-50 rounded-lg px-3 py-2">
-                        <span className="text-gray-700">{e.name}</span>
-                        <span className="text-gray-300 mx-1">·</span>
-                        <span className="text-gray-400 truncate block">{e.path}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setAutostartDialog({ visible: false, entries: null, procName: '' })}
-                className="px-5 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              {autostartDialog.entries && autostartDialog.entries.length > 0 && (
-                <button
-                  onClick={doDisableAutoStart}
-                  className="px-5 py-2 text-sm text-white bg-warning rounded-lg hover:bg-warning-hover transition-colors shadow-sm"
-                >
-                  确认禁用
-                </button>
-              )}
-            </div>
+      <Modal
+        open={autostartDialog.visible}
+        onClose={() => setAutostartDialog({ visible: false, entries: null, procName: '' })}
+        width="w-[28rem] p-5"
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-2xl bg-warning-light border border-warning/30 flex items-center justify-center shrink-0">
+            <ShieldOff size={14} className="text-warning" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-gray-700">禁止自启动</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              {autostartDialog.entries?.length
+                ? `发现进程 "${autostartDialog.procName}" 的 ${autostartDialog.entries.length} 个自启动项`
+                : `未发现进程 "${autostartDialog.procName}" 的自启动配置。`}
+            </p>
+            {autostartDialog.entries && autostartDialog.entries.length > 0 && (
+              <ul className="mt-3 space-y-1.5 max-h-40 overflow-y-auto">
+                {autostartDialog.entries.map((e, i) => (
+                  <li key={i} className="text-xs bg-gray-50 rounded-2xl px-3 py-2">
+                    <span className="text-gray-700">{e.name}</span>
+                    <span className="text-gray-300 mx-1">·</span>
+                    <span className="text-gray-400 truncate block">{e.path}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
-      )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => setAutostartDialog({ visible: false, entries: null, procName: '' })}
+            className="px-5 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            取消
+          </button>
+          {autostartDialog.entries && autostartDialog.entries.length > 0 && (
+            <button
+              onClick={doDisableAutoStart}
+              className="px-5 py-2 text-sm text-white bg-warning rounded-2xl hover:bg-warning-hover transition-colors shadow-sm"
+            >
+              确认禁用
+            </button>
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

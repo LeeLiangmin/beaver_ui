@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Folder, FolderOpen, File, X, Trash2 } from 'lucide-react'
+import { Search, Folder, FolderOpen, File, X, Trash2, Eye } from 'lucide-react'
 import type { FileInfo, SearchRequest } from '../../shared/types'
 import VirtualList from './VirtualList'
 import ProgressBar from './ProgressBar'
+import FilePreviewModal from './FilePreviewModal'
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -24,6 +25,7 @@ export default function FileSearch() {
   const [results, setResults] = useState<FileInfo[]>([])
   const [searching, setSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [previewPath, setPreviewPath] = useState<string | null>(null)
 
   useEffect(() => {
     window.electronAPI.fileSearch.getDrives().then((res) => {
@@ -94,7 +96,7 @@ export default function FileSearch() {
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="输入文件名关键词…"
-              className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+              className="w-full border border-gray-300 rounded-2xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
             />
           </div>
           <div className="relative flex-[1.4] min-w-0">
@@ -106,7 +108,7 @@ export default function FileSearch() {
               type="text"
               value={searchPath}
               readOnly
-              className="w-full border border-gray-300 rounded-lg pl-8 pr-8 py-2 text-sm truncate cursor-default focus:outline-none bg-gray-50"
+              className="w-full border border-gray-300 rounded-2xl pl-8 pr-8 py-2 text-sm truncate cursor-default focus:outline-none bg-gray-50"
             />
             <button
               onClick={handleBrowse}
@@ -119,7 +121,7 @@ export default function FileSearch() {
           <select
             value={fileType}
             onChange={(e) => setFileType(e.target.value as any)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary"
+            className="border border-gray-300 rounded-2xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary"
           >
             <option value="all">全部类型</option>
             <option value="file">文件</option>
@@ -129,7 +131,7 @@ export default function FileSearch() {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-2xl text-sm hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
             >
               <Search size={15} />
               {searching ? '搜索中…' : '搜索'}
@@ -137,14 +139,14 @@ export default function FileSearch() {
             <button
               onClick={handleCancel}
               disabled={!searching}
-              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-2xl text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition-colors"
             >
               <X size={15} />
               停止
             </button>
             <button
               onClick={handleClear}
-              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-2 border border-gray-300 rounded-2xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"
             >
               <Trash2 size={15} />
               清空
@@ -183,14 +185,14 @@ export default function FileSearch() {
 
       <div className="flex-1 min-h-0">
         {searching && results.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-card h-full flex items-center justify-center">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-card h-full flex items-center justify-center">
             <ProgressBar label="正在搜索..." />
           </div>
         ) : results.length > 0 ? (
           <VirtualList
             items={results}
             rowHeight={36}
-            className="bg-white rounded-lg border border-gray-200 shadow-card h-full"
+            className="bg-white rounded-2xl border border-gray-200 shadow-card h-full"
             header={
               <div className="flex bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 h-8 items-center">
                 <div className="w-7 shrink-0"></div>
@@ -227,13 +229,22 @@ export default function FileSearch() {
                 </div>
                 <div className="w-14 shrink-0 flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   {!f.isDir && (
-                    <button
-                      onClick={() => handleOpen(f.path)}
-                      className="p-1 rounded text-primary hover:bg-primary-light transition-colors"
-                      title="打开文件"
-                    >
-                      <FolderOpen size={15} />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleOpen(f.path)}
+                        className="p-1 rounded text-primary hover:bg-primary-light transition-colors"
+                        title="打开文件"
+                      >
+                        <FolderOpen size={15} />
+                      </button>
+                      <button
+                        onClick={() => setPreviewPath(f.path)}
+                        className="p-1 rounded text-indigo-500 hover:bg-indigo-50 transition-colors"
+                        title="预览"
+                      >
+                        <Eye size={15} />
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => handleOpenLocation(f.path)}
@@ -247,8 +258,8 @@ export default function FileSearch() {
             )}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-32 gap-2 bg-white rounded-lg border border-gray-200">
-            <div className="w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center bg-primary-light">
+          <div className="flex flex-col items-center justify-center h-32 gap-2 bg-white rounded-2xl border border-gray-200">
+            <div className="w-12 h-12 rounded-2xl border border-gray-200 flex items-center justify-center bg-primary-light">
               <Search size={18} className="text-primary/50" />
             </div>
             <p className="text-xs text-gray-400">
@@ -257,6 +268,9 @@ export default function FileSearch() {
           </div>
         )}
       </div>
+      {previewPath && (
+        <FilePreviewModal filePath={previewPath} onClose={() => setPreviewPath(null)} />
+      )}
     </div>
   )
 }

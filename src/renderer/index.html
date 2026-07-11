@@ -4,8 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Beaver</title>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('beaver-theme') || 'light';
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else if (theme === 'system') {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+          if (localStorage.getItem('beaver-theme') === 'system') {
+            document.documentElement.classList.toggle('dark', e.matches);
+          }
+        });
+      }
+    })();
+  </script>
 </head>
-<body class="bg-[#f5f5f5] text-gray-900">
+<body class="bg-surface-alt text-text-primary">
   <div id="root"></div>
   <script type="module" src="./main.tsx"></script>
 </body>

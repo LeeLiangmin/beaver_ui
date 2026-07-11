@@ -5,6 +5,26 @@ import crypto from 'crypto'
 import { getDb } from './db'
 import type { OpenerItem, OpenerGroup, OpenerData } from '../../shared/types'
 
+interface OpenerItemRow {
+  id: string
+  name: string
+  path: string
+  is_dir: number
+  group_id: string
+  created_at: number
+  last_used: number
+  use_count: number
+  sort_order: number
+}
+
+interface OpenerGroupRow {
+  id: string
+  name: string
+  color: string
+  sort_order: number
+  created_at: number
+}
+
 let migrated = false
 
 function uuid(): string {
@@ -15,7 +35,7 @@ function now(): number {
   return Math.floor(Date.now() / 1000)
 }
 
-function itemRowToObj(row: any): OpenerItem {
+function itemRowToObj(row: OpenerItemRow): OpenerItem {
   return {
     id: row.id,
     name: row.name,
@@ -29,7 +49,7 @@ function itemRowToObj(row: any): OpenerItem {
   }
 }
 
-function groupRowToObj(row: any): OpenerGroup {
+function groupRowToObj(row: OpenerGroupRow): OpenerGroup {
   return {
     id: row.id,
     name: row.name,
@@ -77,14 +97,14 @@ function migrateFromJson(): void {
 export function getAll(): OpenerData {
   migrateFromJson()
   const db = getDb()
-  const groups = db
+  const groups = (db
     .prepare('SELECT * FROM opener_groups ORDER BY sort_order')
-    .all()
-    .map(groupRowToObj as any) as OpenerGroup[]
-  const items = db
+    .all() as OpenerGroupRow[])
+    .map(groupRowToObj)
+  const items = (db
     .prepare('SELECT * FROM opener_items ORDER BY sort_order')
-    .all()
-    .map(itemRowToObj as any) as OpenerItem[]
+    .all() as OpenerItemRow[])
+    .map(itemRowToObj)
   return { groups, items }
 }
 
@@ -94,7 +114,7 @@ export function addItem(filePath: string, groupId: string): OpenerItem {
   const isDir = fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()
   const name = path.basename(filePath)
   const maxOrder =
-    (db.prepare('SELECT MAX(sort_order) as m FROM opener_items').get() as any)?.m || 0
+    (db.prepare('SELECT MAX(sort_order) as m FROM opener_items').get() as { m: number | null } | undefined)?.m ?? 0
   const item: OpenerItem = {
     id: uuid(),
     name,
@@ -148,7 +168,7 @@ export function addGroup(name: string, color: string): OpenerGroup {
   migrateFromJson()
   const db = getDb()
   const maxOrder =
-    (db.prepare('SELECT MAX(sort_order) as m FROM opener_groups').get() as any)?.m || 0
+    (db.prepare('SELECT MAX(sort_order) as m FROM opener_groups').get() as { m: number | null } | undefined)?.m ?? 0
   const group: OpenerGroup = {
     id: uuid(),
     name,

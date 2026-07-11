@@ -14,6 +14,7 @@ import {
 import type { LargeFile, LargeFileCategory, AiLargeFileTag } from '../../shared/types'
 import { formatSize } from './useDiskCleaner'
 import { useToast } from './Toast'
+import Modal from './Modal'
 
 interface Props {
   aiEnabled: boolean
@@ -27,7 +28,7 @@ interface Props {
   onCancelScan: () => void
   onBrowse: () => void
   onLocate: (path: string) => void
-  onRefreshFiles: () => void
+  onRemoveFiles: (paths: string[]) => void
 }
 
 const CLEANABILITY_STYLE: Record<string, { bg: string; text: string }> = {
@@ -54,7 +55,7 @@ export default function LargeFileFinder({
   onCancelScan,
   onBrowse,
   onLocate,
-  onRefreshFiles,
+  onRemoveFiles,
 }: Props) {
   const toast = useToast().toast
   const [classifying, setClassifying] = useState(false)
@@ -127,7 +128,7 @@ export default function LargeFileFinder({
     setDeleteTarget(null)
     if (res.ok) {
       toast(`已移入回收站: ${deleteTarget.name}`, 'success')
-      onRefreshFiles()
+      onRemoveFiles([deleteTarget.path])
     } else {
       toast(res.error || '删除失败', 'error')
     }
@@ -147,7 +148,7 @@ export default function LargeFileFinder({
     setDeleteGroup(null)
     if (ok > 0) toast(`已移入回收站: ${ok} 个文件${fail > 0 ? `（${fail} 个失败）` : ''}`, 'success')
     else toast('删除失败', 'error')
-    onRefreshFiles()
+    onRemoveFiles(deleteGroup.files.map(f => f.path))
   }
 
   const totalBytes = largeFiles.reduce((s, f) => s + f.sizeBytes, 0)
@@ -163,7 +164,7 @@ export default function LargeFileFinder({
             type="text"
             value={largePath}
             onChange={(e) => onSetPath(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg pl-8 pr-8 py-1.5 text-sm truncate focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
+            className="w-full border border-gray-300 rounded-2xl pl-8 pr-8 py-1.5 text-sm truncate focus:outline-none focus:ring-2 focus:ring-primary-light focus:border-primary transition-colors"
           />
           <button
             onClick={onBrowse}
@@ -178,13 +179,13 @@ export default function LargeFileFinder({
             type="number"
             value={largeMinMB}
             onChange={(e) => onSetMinMB(parseInt(e.target.value, 10) || 100)}
-            className="w-16 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary-light"
+            className="w-16 border border-gray-300 rounded-2xl px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary-light"
           />
           <span className="text-xs text-gray-400">MB</span>
         </div>
         <button
           onClick={largeScanning ? onCancelScan : onScan}
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm transition-colors ${
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-2xl text-xs font-medium shadow-sm transition-colors ${
             largeScanning
               ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
               : 'bg-primary text-white hover:bg-primary-hover'
@@ -205,7 +206,7 @@ export default function LargeFileFinder({
           <button
             onClick={doClassify}
             disabled={classifying}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-2xl text-2xs font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 disabled:opacity-40 transition-colors"
           >
             <Sparkles size={11} className={classifying ? 'animate-pulse' : ''} />
             {classifying ? '分类中…' : Object.keys(categories).length > 0 ? '重新分类' : 'AI 智能分类'}
@@ -214,7 +215,7 @@ export default function LargeFileFinder({
             <button
               onClick={doAnalyze}
               disabled={analyzing}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-2xl text-2xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-40 transition-colors"
             >
               <Sparkles size={11} className={analyzing ? 'animate-pulse' : ''} />
               {analyzing ? '研判中…' : 'AI 逐个研判'}
@@ -236,13 +237,13 @@ export default function LargeFileFinder({
               const style = CLEANABILITY_STYLE[g.cleanability] || CLEANABILITY_STYLE['需判断']
               const isCol = collapsed.has(g.cat)
               return (
-                <div key={g.cat} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div key={g.cat} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                   <div className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors group/gh">
                     <button onClick={() => toggleGroup(g.cat)} className="p-0.5 text-gray-400 hover:text-gray-600">
                       {isCol ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                     </button>
                     <span className="text-sm font-semibold text-gray-700">{g.cat}</span>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${style.bg} ${style.text}`}>
+                    <span className={`text-2xs font-medium px-1.5 py-0.5 rounded-full ${style.bg} ${style.text}`}>
                       {g.cleanability}
                     </span>
                     <span className="text-xs text-gray-400 ml-auto">
@@ -259,7 +260,7 @@ export default function LargeFileFinder({
                     </button>
                   </div>
                   {g.reason && !isCol && (
-                    <div className="px-4 py-1.5 text-[11px] text-gray-500 bg-gray-50/60 border-t border-gray-100 flex items-center gap-1">
+                    <div className="px-4 py-1.5 text-2xs text-gray-500 bg-gray-50/60 border-t border-gray-100 flex items-center gap-1">
                       <Info size={10} />
                       {g.reason}
                     </div>
@@ -271,11 +272,11 @@ export default function LargeFileFinder({
                         <div key={f.path} className="flex items-center px-4 py-2 border-t border-gray-100 hover:bg-gray-50 group/f">
                           <div className="flex-1 min-w-0">
                             <div className="text-sm text-gray-700 truncate">{f.name}</div>
-                            <div className="text-[10px] text-gray-400 truncate">{f.path}</div>
+                            <div className="text-2xs text-gray-400 truncate">{f.path}</div>
                           </div>
                           {tag && (
                             <span
-                              className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${TAG_STYLE[tag.tag].bg} ${TAG_STYLE[tag.tag].text}`}
+                              className={`text-2xs font-medium px-1.5 py-0.5 rounded-full shrink-0 ml-2 ${TAG_STYLE[tag.tag].bg} ${TAG_STYLE[tag.tag].text}`}
                               title={tag.reason}
                             >
                               {tag.tag}
@@ -306,7 +307,7 @@ export default function LargeFileFinder({
             })}
           </div>
         ) : largeFiles.length > 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200">
+          <div className="bg-white rounded-2xl border border-gray-200">
             <div className="flex items-center px-4 h-9 text-xs font-semibold text-gray-500 border-b border-gray-200 bg-gray-50">
               <div className="flex-1">文件</div>
               <div className="w-24 shrink-0 text-right">大小</div>
@@ -316,7 +317,7 @@ export default function LargeFileFinder({
               <div key={f.path} className="flex items-center px-4 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 group/f">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-gray-700 truncate">{f.name}</div>
-                  <div className="text-[10px] text-gray-400 truncate">{f.path}</div>
+                  <div className="text-2xs text-gray-400 truncate">{f.path}</div>
                 </div>
                 <div className="w-24 shrink-0 text-right text-sm text-gray-600 tabular-nums font-semibold">
                   {formatSize(f.sizeBytes)}
@@ -351,70 +352,60 @@ export default function LargeFileFinder({
 
       {/* Single file delete dialog */}
       {deleteTarget && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => setDeleteTarget(null)}
-        >
-          <div className="bg-white rounded-2xl p-6 w-[24rem] shadow-modal animate-modal-in" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <AlertTriangle size={18} className="text-amber-500" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-gray-700">移入回收站</h3>
-                <p className="text-xs text-gray-500 mt-1 truncate">确定要将 "{deleteTarget.name}" 移入回收站吗？</p>
-                <p className="text-xs text-gray-400 mt-0.5">文件可随时从回收站恢复。</p>
-              </div>
+        <Modal open={true} onClose={() => setDeleteTarget(null)} width="w-[24rem] p-6">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+              <AlertTriangle size={18} className="text-amber-500" />
             </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-                取消
-              </button>
-              <button
-                onClick={handleTrashFile}
-                disabled={deleting}
-                className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-40 shadow-sm transition-colors"
-              >
-                {deleting ? '删除中…' : '移入回收站'}
-              </button>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-gray-700">移入回收站</h3>
+              <p className="text-xs text-gray-500 mt-1 truncate">确定要将 "{deleteTarget.name}" 移入回收站吗？</p>
+              <p className="text-xs text-gray-400 mt-0.5">文件可随时从回收站恢复。</p>
             </div>
           </div>
-        </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors">
+              取消
+            </button>
+            <button
+              onClick={handleTrashFile}
+              disabled={deleting}
+              className="px-4 py-2 text-sm bg-amber-500 text-white rounded-2xl hover:bg-amber-600 disabled:opacity-40 shadow-sm transition-colors"
+            >
+              {deleting ? '删除中…' : '移入回收站'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Group delete dialog */}
       {deleteGroup && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-center justify-center animate-fade-in"
-          onClick={() => setDeleteGroup(null)}
-        >
-          <div className="bg-white rounded-2xl p-6 w-[24rem] shadow-modal animate-modal-in" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <AlertTriangle size={18} className="text-amber-500" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700">批量移入回收站</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  将 "{deleteGroup.label}" 的全部 {deleteGroup.files.length} 个文件（共 {formatSize(deleteGroup.files.reduce((s, f) => s + f.sizeBytes, 0))}）移入回收站？
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">文件可随时从回收站恢复。</p>
-              </div>
+        <Modal open={true} onClose={() => setDeleteGroup(null)} width="w-[24rem] p-6">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+              <AlertTriangle size={18} className="text-amber-500" />
             </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteGroup(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-                取消
-              </button>
-              <button
-                onClick={handleTrashGroup}
-                disabled={deleting}
-                className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-40 shadow-sm transition-colors"
-              >
-                {deleting ? '删除中…' : '全部移入回收站'}
-              </button>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700">批量移入回收站</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                将 "{deleteGroup.label}" 的全部 {deleteGroup.files.length} 个文件（共 {formatSize(deleteGroup.files.reduce((s, f) => s + f.sizeBytes, 0))}）移入回收站？
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">文件可随时从回收站恢复。</p>
             </div>
           </div>
-        </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setDeleteGroup(null)} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-2xl transition-colors">
+              取消
+            </button>
+            <button
+              onClick={handleTrashGroup}
+              disabled={deleting}
+              className="px-4 py-2 text-sm bg-amber-500 text-white rounded-2xl hover:bg-amber-600 disabled:opacity-40 shadow-sm transition-colors"
+            >
+              {deleting ? '删除中…' : '全部移入回收站'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   )

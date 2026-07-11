@@ -3,6 +3,7 @@ export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: string }
 export interface Settings {
   dataPath: string
   editorCommand?: string
+  theme?: 'light' | 'dark' | 'system'
   aiEnabled?: boolean
   aiBaseUrl?: string
   aiApiKey?: string
@@ -242,6 +243,9 @@ export interface CleanupPreset {
 }
 
 export interface ElectronAPI {
+  fileViewer: {
+    allowFile: (absPath: string) => Promise<IpcResult<void>>
+  }
   settings: {
     get: () => Promise<IpcResult<Settings>>
     save: (s: Settings) => Promise<IpcResult<void>>

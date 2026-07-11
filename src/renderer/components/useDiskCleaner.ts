@@ -157,12 +157,14 @@ export function useDiskCleaner() {
   }
 
   const applyAiSelection = (ids: string[]) => {
+    if (!Array.isArray(ids) || ids.length === 0) return
     setSelectedIds(new Set(ids))
     setAiHighlightIds(new Set(ids))
     setTimeout(() => setAiHighlightIds(new Set()), 3000)
   }
 
   const addToSelection = (ids: string[]) => {
+    if (!Array.isArray(ids) || ids.length === 0) return
     setSelectedIds((prev) => {
       const next = new Set(prev)
       for (const id of ids) next.add(id)
@@ -196,6 +198,7 @@ export function useDiskCleaner() {
   }
 
   const runPreset = (ruleIds: string[]) => {
+    if (!Array.isArray(ruleIds) || ruleIds.length === 0) return
     applyAiSelection(ruleIds)
     toast(`已勾选 ${ruleIds.length} 个类别`, 'success')
   }
@@ -248,6 +251,10 @@ export function useDiskCleaner() {
   const handleLocateFile = async (filePath: string) => {
     await window.electronAPI.shell.openLocation(filePath)
   }
+
+  const handleRemoveLargeFiles = useCallback((paths: string[]) => {
+    setLargeFiles((prev) => prev.filter((f) => !paths.includes(f.path)))
+  }, [])
 
   // Computed
   const availableResults = scanResults.filter((r) => r.accessible && r.sizeBytes > 0)
@@ -323,5 +330,6 @@ export function useDiskCleaner() {
     handleCancelLargeScan,
     handleBrowseForLarge,
     handleLocateFile,
+    handleRemoveLargeFiles,
   }
 }
